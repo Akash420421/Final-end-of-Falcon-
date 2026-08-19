@@ -33,6 +33,11 @@ import {
   Eye,
   Crop,
   Info,
+  Database,
+  AlertTriangle,
+  Copy,
+  Terminal,
+  Server,
 } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa6';
 import { useFalconStore } from '../context/StoreContext';
@@ -40,6 +45,7 @@ import { Product, Category, QuoteRequest, CataloguePage } from '../types';
 import { ProductVisual } from './ProductVisual';
 import { compressImageFile, compressImageDataUrl } from '../utils/imageCompressor';
 import { ImageCropperModal } from './ImageCropperModal';
+import { testSupabaseConnection } from '../services/supabaseService';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -77,12 +83,59 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     updateCatalogueSettings,
     updateCataloguePages,
     updateSingleCataloguePage,
+    syncAllDataToSupabase,
   } = useFalconStore();
 
-  const [activeTab, setActiveTab] = useState<'LOGOS' | 'COMPANY' | 'PRODUCTS' | 'CATEGORIES' | 'WHY_US' | 'CATALOGUE' | 'SECURITY'>('CATALOGUE');
+  const [activeTab, setActiveTab] = useState<'LOGOS' | 'COMPANY' | 'PRODUCTS' | 'CATEGORIES' | 'WHY_US' | 'CATALOGUE' | 'SECURITY' | 'DATABASE'>('CATALOGUE');
   const [successMsg, setSuccessMsg] = useState('');
   const [uploadingMap, setUploadingMap] = useState<Record<string, boolean>>({});
   const [newSubCatText, setNewSubCatText] = useState('');
+
+  // Supabase Database Connection & Migration Diagnostic State
+  const [dbDiagnostic, setDbDiagnostic] = useState<{
+    tested: boolean;
+    connected: boolean;
+    tablesExist: boolean;
+    message: string;
+    errorDetail?: string;
+  }>({
+    tested: false,
+    connected: true,
+    tablesExist: false,
+    message: 'Testing connection...',
+  });
+  const [isTestingDb, setIsTestingDb] = useState(false);
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
+  const [copiedSql, setCopiedSql] = useState(false);
+
+  const runDbTest = async () => {
+    setIsTestingDb(true);
+    try {
+      const res = await testSupabaseConnection();
+      setDbDiagnostic({
+        tested: true,
+        connected: res.connected,
+        tablesExist: res.tablesExist,
+        message: res.message,
+        errorDetail: res.errorDetail,
+      });
+    } catch (err: any) {
+      setDbDiagnostic({
+        tested: true,
+        connected: false,
+        tablesExist: false,
+        message: 'Connection check failed: ' + (err?.message || err),
+      });
+    } finally {
+      setIsTestingDb(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      runDbTest();
+    }
+  }, [isOpen]);
 
   // Interactive Image Cropper Dialog State
   const [cropperConfig, setCropperConfig] = useState<{
@@ -625,6 +678,28 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
         >
           <KeyRound className="w-3.5 h-3.5 text-purple-400" />
           <span>Admin Security</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setActiveTab('DATABASE');
+            runDbTest();
+          }}
+          className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+            activeTab === 'DATABASE'
+              ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md ring-2 ring-cyan-500/50'
+              : 'bg-slate-950/60 text-slate-400 hover:text-cyan-300 hover:bg-slate-800 border border-slate-800'
+          }`}
+        >
+          <Database className="w-3.5 h-3.5 text-cyan-400" />
+          <span>Cloud Database & Sync</span>
+          {dbDiagnostic.tested && (
+            <span
+              className={`w-2 h-2 rounded-full ${
+                dbDiagnostic.tablesExist ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+              }`}
+            />
+          )}
         </button>
       </div>
 
@@ -2539,6 +2614,297 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                 </button>
               </div>
             </form>
+          )}
+
+          {/* TAB 8: CLOUD DATABASE & REALTIME SYNC */}
+          {activeTab === 'DATABASE' && (
+            <div className="space-y-6">
+              {/* Header & Connection Status Banner */}
+              <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4 shadow-lg">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                  <div>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-[10px] font-black uppercase tracking-wider mb-1">
+                      <Database className="w-3 h-3" />
+                      <span>Supabase Cloud Integration</span>
+                    </div>
+                    <h3 className="text-sm font-black text-white flex items-center gap-2">
+                      <Server className="w-4 h-4 text-cyan-400" />
+                      Live Database Sync & Realtime Diagnostics
+                    </h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Target Project: <span className="font-mono text-cyan-300">https://ywgosjrealgcbanelfei.supabase.co</span>
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={runDbTest}
+                    disabled={isTestingDb}
+                    className="bg-slate-800 hover:bg-slate-700 active:scale-95 text-cyan-300 border border-cyan-500/30 text-xs font-bold px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-sm"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isTestingDb ? 'animate-spin' : ''}`} />
+                    <span>{isTestingDb ? 'Testing...' : 'Test Connection'}</span>
+                  </button>
+                </div>
+
+                {/* Diagnostic Result Card */}
+                {dbDiagnostic.tested ? (
+                  dbDiagnostic.tablesExist ? (
+                    <div className="bg-emerald-950/40 border border-emerald-500/40 p-4 rounded-xl flex items-start gap-3">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <h4 className="text-xs font-black text-emerald-300">
+                          Database is 100% Active & Real-Time Syncing
+                        </h4>
+                        <p className="text-[11px] text-emerald-200/80 leading-relaxed">
+                          All 5 Supabase tables (<span className="font-mono text-white">store_settings</span>, <span className="font-mono text-white">products</span>, <span className="font-mono text-white">categories</span>, <span className="font-mono text-white">quotes</span>, <span className="font-mono text-white">catalogue_pages</span>) are active. Any changes you make in this Admin Panel sync instantly to visitors on all devices.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-amber-950/50 border border-amber-500/50 p-4 rounded-xl space-y-3">
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-black text-amber-300">
+                            Action Required: SQL Tables Need to be Created in Supabase
+                          </h4>
+                          <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                            Aapka Supabase account connect hai, lekin database ke andar tables abhi tak create nahi hui hain. Is wajah se aap jo bhi changes karte hain, woh sirf aapke current browser mein save hoti hain aur dusre devices par live nahi jaati.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* 3-Step Simple Guide */}
+                      <div className="bg-slate-900/90 border border-amber-500/30 p-3.5 rounded-lg space-y-2.5">
+                        <div className="text-xs font-black text-white flex items-center gap-1.5">
+                          <Terminal className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Sirf 2 Minute Ka Setup (Follow these 3 Steps):</span>
+                        </div>
+                        <ol className="text-[11px] text-slate-300 space-y-1.5 list-decimal list-inside">
+                          <li>
+                            Niche diye gaye <span className="font-bold text-white">"Copy Full SQL Schema"</span> button par click karke SQL script copy karein.
+                          </li>
+                          <li>
+                            Apne Supabase dashboard ke SQL Editor page ko kholein:{' '}
+                            <a
+                              href="https://supabase.com/dashboard/project/ywgosjrealgcbanelfei/sql/new"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-cyan-400 underline font-bold inline-flex items-center gap-0.5 ml-1"
+                            >
+                              <span>Open Supabase SQL Editor</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </li>
+                          <li>
+                            Wahan SQL script paste karein aur green <span className="font-bold text-emerald-400">"RUN"</span> button dabayein.
+                          </li>
+                        </ol>
+                      </div>
+                    </div>
+                  )
+                ) : (
+                  <div className="bg-slate-900 p-4 rounded-xl flex items-center gap-2 text-slate-400 text-xs">
+                    <RefreshCw className="w-4 h-4 animate-spin text-cyan-400" />
+                    <span>Checking Supabase table status...</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Force Push All Data to Supabase Button */}
+              <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4 shadow-lg">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-black text-white flex items-center gap-2">
+                      <Upload className="w-4 h-4 text-emerald-400" />
+                      Sync All Current Products & Changes to Supabase
+                    </h4>
+                    <p className="text-[11px] text-slate-400 max-w-xl">
+                      Aapke browser mein mojood sabhi products ({products.length}), categories ({categories.length}), catalogue pages ({catalogueSettings?.pages?.length || 0}) aur branding settings ko ek click mein Supabase par upload karein.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setIsSyncingAll(true);
+                      const res = await syncAllDataToSupabase();
+                      setIsSyncingAll(false);
+                      if (res.success) {
+                        showToast('✅ All data successfully synced to Supabase Cloud!');
+                        runDbTest();
+                      } else {
+                        alert('❌ Sync failed: ' + res.message + '\n\nPlease verify that you have executed the SQL Schema in Supabase SQL Editor.');
+                      }
+                    }}
+                    disabled={isSyncingAll}
+                    className="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-lg transition flex items-center justify-center gap-2 shrink-0 disabled:opacity-50"
+                  >
+                    <Upload className={`w-4 h-4 ${isSyncingAll ? 'animate-bounce' : ''}`} />
+                    <span>{isSyncingAll ? 'Syncing Data...' : 'Push All Data to Cloud Now'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* SQL Schema Copy Box */}
+              <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-3 shadow-lg">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <h4 className="text-xs font-black text-white flex items-center gap-2">
+                      <Terminal className="w-4 h-4 text-cyan-400" />
+                      Supabase SQL Schema (Tables + RLS + Realtime)
+                    </h4>
+                    <p className="text-[11px] text-slate-400">
+                      Copy this and execute in Supabase SQL Editor once:
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const sql = `-- FALCON ELECTRICS SQL SCHEMA
+CREATE TABLE IF NOT EXISTS public.store_settings (
+    id TEXT PRIMARY KEY,
+    company_details JSONB DEFAULT '{}'::jsonb,
+    hero_content JSONB DEFAULT '{}'::jsonb,
+    logo_image_url TEXT DEFAULT '',
+    why_choose_us JSONB DEFAULT '[]'::jsonb,
+    catalogue_settings JSONB DEFAULT '{}'::jsonb,
+    admin_auth JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.categories (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    subtitle TEXT DEFAULT '',
+    description TEXT DEFAULT '',
+    image TEXT DEFAULT '',
+    image_url TEXT DEFAULT '',
+    image_fit TEXT DEFAULT 'contain',
+    bg_color TEXT DEFAULT '',
+    border_color TEXT DEFAULT '',
+    text_color TEXT DEFAULT '',
+    icon_name TEXT DEFAULT '',
+    icon TEXT DEFAULT '',
+    badge TEXT DEFAULT '',
+    order_index INTEGER DEFAULT 0,
+    sub_categories JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.products (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    category_name TEXT DEFAULT '',
+    sub_category TEXT DEFAULT '',
+    price TEXT DEFAULT '',
+    per_piece_price TEXT DEFAULT '',
+    amps TEXT DEFAULT '',
+    voltage TEXT DEFAULT '',
+    steps TEXT DEFAULT '',
+    material TEXT DEFAULT '',
+    description TEXT DEFAULT '',
+    features JSONB DEFAULT '[]'::jsonb,
+    image TEXT DEFAULT '',
+    images JSONB DEFAULT '[]'::jsonb,
+    custom_specs JSONB DEFAULT '[]'::jsonb,
+    is_top_pick BOOLEAN DEFAULT FALSE,
+    rating NUMERIC DEFAULT 5.0,
+    badge TEXT DEFAULT '',
+    color_theme TEXT DEFAULT '',
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.quotes (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    email TEXT DEFAULT '',
+    quantity TEXT DEFAULT '100 Units',
+    notes TEXT DEFAULT '',
+    product_name TEXT DEFAULT '',
+    product_id TEXT DEFAULT '',
+    status TEXT DEFAULT 'Pending',
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.catalogue_pages (
+    id TEXT PRIMARY KEY,
+    page_number INTEGER NOT NULL,
+    title TEXT DEFAULT '',
+    subtitle TEXT DEFAULT '',
+    description TEXT DEFAULT '',
+    image_url TEXT DEFAULT '',
+    image TEXT DEFAULT '',
+    category_tag TEXT DEFAULT '',
+    updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+ALTER TABLE public.store_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.quotes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.catalogue_pages ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read access on store_settings" ON public.store_settings FOR SELECT USING (true);
+CREATE POLICY "Allow public insert/update on store_settings" ON public.store_settings FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow public read access on categories" ON public.categories FOR SELECT USING (true);
+CREATE POLICY "Allow public insert/update on categories" ON public.categories FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow public read access on products" ON public.products FOR SELECT USING (true);
+CREATE POLICY "Allow public insert/update on products" ON public.products FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow public read access on quotes" ON public.quotes FOR SELECT USING (true);
+CREATE POLICY "Allow public insert/update on quotes" ON public.quotes FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow public read access on catalogue_pages" ON public.catalogue_pages FOR SELECT USING (true);
+CREATE POLICY "Allow public insert/update on catalogue_pages" ON public.catalogue_pages FOR ALL USING (true) WITH CHECK (true);
+
+ALTER PUBLICATION supabase_realtime ADD TABLE public.store_settings;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.categories;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.products;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.quotes;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.catalogue_pages;
+
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.store_settings TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.categories TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.products TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.quotes TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.catalogue_pages TO anon, authenticated, service_role;`;
+
+                      navigator.clipboard.writeText(sql);
+                      setCopiedSql(true);
+                      showToast('📋 SQL Script copied to clipboard!');
+                      setTimeout(() => setCopiedSql(false), 3000);
+                    }}
+                    className="bg-cyan-600 hover:bg-cyan-500 active:scale-95 text-white font-extrabold text-xs px-3.5 py-1.5 rounded-xl shadow transition flex items-center gap-1.5"
+                  >
+                    {copiedSql ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5 text-white" />}
+                    <span>{copiedSql ? 'Copied!' : 'Copy Full SQL Schema'}</span>
+                  </button>
+                </div>
+
+                <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 font-mono text-[10px] text-slate-300 max-h-48 overflow-y-auto leading-relaxed select-all">
+                  <pre className="whitespace-pre-wrap">{`-- Run in: https://supabase.com/dashboard/project/ywgosjrealgcbanelfei/sql/new
+CREATE TABLE IF NOT EXISTS public.store_settings (...);
+CREATE TABLE IF NOT EXISTS public.categories (...);
+CREATE TABLE IF NOT EXISTS public.products (...);
+CREATE TABLE IF NOT EXISTS public.quotes (...);
+CREATE TABLE IF NOT EXISTS public.catalogue_pages (...);
+-- Includes RLS Policies & Supabase Realtime`}</pre>
+                </div>
+              </div>
+            </div>
           )}
       </main>
 

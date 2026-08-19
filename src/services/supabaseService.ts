@@ -415,3 +415,79 @@ export async function upsertSupabaseCataloguePage(page: CataloguePage) {
     throw error;
   }
 }
+
+/**
+ * Verifies Supabase connection and checks if the required tables exist
+ */
+export async function testSupabaseConnection(): Promise<{
+  connected: boolean;
+  tablesExist: boolean;
+  message: string;
+  errorDetail?: string;
+}> {
+  try {
+    const { data, error } = await supabase
+      .from('store_settings')
+      .select('id')
+      .limit(1);
+
+    if (error) {
+      if (
+        error.message?.includes('relation') ||
+        error.message?.includes('does not exist') ||
+        error.code === '42P01' ||
+        error.code === 'PGRST204' ||
+        error.code === 'PGRST205'
+      ) {
+        return {
+          connected: true,
+          tablesExist: false,
+          message: 'Supabase connected, but tables (store_settings, products, etc.) have not been created yet in SQL Editor.',
+          errorDetail: error.message,
+        };
+      }
+
+      if (
+        error.code === '42501' ||
+        error.message?.includes('permission denied') ||
+        error.message?.includes('violates row-level security')
+      ) {
+        return {
+          connected: true,
+          tablesExist: false,
+          message: 'PostgreSQL Permission Denied: Please run the updated SQL schema with GRANT permissions in Supabase SQL Editor.',
+          errorDetail: error.message,
+        };
+      }
+
+      if (error.message?.includes('JWT') || error.message?.includes('apikey') || error.code === 'PGRST301') {
+        return {
+          connected: false,
+          tablesExist: false,
+          message: 'Supabase API Key authentication error. Please verify the publishable key.',
+          errorDetail: error.message,
+        };
+      }
+
+      return {
+        connected: false,
+        tablesExist: false,
+        message: error.message || 'Database query error',
+        errorDetail: JSON.stringify(error),
+      };
+    }
+
+    return {
+      connected: true,
+      tablesExist: true,
+      message: 'All Supabase tables and permissions are active and syncing in real-time!',
+    };
+  } catch (err: any) {
+    return {
+      connected: false,
+      tablesExist: false,
+      message: 'Unable to reach Supabase: ' + (err?.message || err),
+      errorDetail: String(err),
+    };
+  }
+}

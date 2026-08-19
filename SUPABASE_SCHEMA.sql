@@ -122,3 +122,13 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.categories;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.products;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.quotes;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.catalogue_pages;
+
+-- Grant permissions to public (anon) and authenticated roles
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.store_settings TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.categories TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.products TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.quotes TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.catalogue_pages TO anon, authenticated, service_role;

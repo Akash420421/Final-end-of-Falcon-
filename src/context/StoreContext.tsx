@@ -153,6 +153,9 @@ interface StoreContextType {
 
   // Reset
   resetToDefaults: () => Promise<void>;
+
+  // Manual Full Sync to Supabase
+  syncAllDataToSupabase: () => Promise<{ success: boolean; message: string }>;
 }
 
 const defaultAdminCreds: AdminCredentials = {
@@ -1000,6 +1003,53 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  // 20. Manual Force Sync All Data to Supabase
+  const syncAllDataToSupabase = async (): Promise<{ success: boolean; message: string }> => {
+    try {
+      // 1. Save global store settings
+      await saveSupabaseStoreSettings({
+        companyDetails,
+        heroContent,
+        logoImageUrl,
+        whyChooseUs,
+        catalogueSettings,
+        adminAuth: adminCredentials,
+      });
+
+      // 2. Save products
+      for (const prod of products) {
+        await upsertSupabaseProduct(prod);
+      }
+
+      // 3. Save categories
+      for (const cat of categories) {
+        await upsertSupabaseCategory(cat);
+      }
+
+      // 4. Save catalogue pages
+      if (catalogueSettings?.pages?.length) {
+        for (const page of catalogueSettings.pages) {
+          await upsertSupabaseCataloguePage(page);
+        }
+      }
+
+      setIsSupabaseConnected(true);
+      setSupabaseError(null);
+      return {
+        success: true,
+        message: 'All products, categories, catalogue pages, and store settings successfully pushed to Supabase!',
+      };
+    } catch (err: any) {
+      console.error('[Supabase Full Sync Error]', err);
+      const errMsg = err?.message || String(err);
+      setSupabaseError(errMsg);
+      return {
+        success: false,
+        message: errMsg,
+      };
+    }
+  };
+
   return (
     <StoreContext.Provider
       value={{
@@ -1020,6 +1070,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         supabaseError,
         retryFirebaseConnection: retrySupabaseConnection,
         retrySupabaseConnection,
+        syncAllDataToSupabase,
         loginAdmin,
         logoutAdmin,
         updateAdminCredentials,
