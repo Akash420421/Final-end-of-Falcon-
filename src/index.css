@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@layer utilities {
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+}
+
+:root {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Custom smooth transitions */
+.smooth-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* =========================================================
+   CATALOGUE SECURITY & CONTENT PROTECTION STYLES
+   ========================================================= */
+
+/* Anti-selection & Anti-callout for catalogue images and elements */
+.catalogue-secure-zone {
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  -khtml-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+  -webkit-user-drag: none !important;
+  user-drag: none !important;
+  touch-action: pan-y !important;
+}
+
+.catalogue-secure-zone img {
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+  -webkit-user-drag: none !important;
+  user-drag: none !important;
+  pointer-events: none !important;
+}
+
+/* Print Security Protection */
+@media print {
+  body {
+    background: #000 !important;
+  }
+  
+  .catalogue-secure-zone,
+  .catalogue-image-container,
+  .catalogue-page-wrapper {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  .print-protection-notice {
+    display: block !important;
+    font-size: 20pt !important;
+    font-weight: bold !important;
+    text-align: center !important;
+    padding: 100px 20px !important;
+    color: #000 !important;
+  }
+}
+
+.print-protection-notice {
+  display: none;
+}
+

@@ -1,0 +1,6 @@
+{
+  "name": "Falcon Electrics",
+  "description": "Mobile-First UI for Falcon Electrics - Reliable Electrical Solutions for Every Season",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
