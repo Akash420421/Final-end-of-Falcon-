@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowRight, Star, Eye, ChevronDown, ChevronUp } from 'lucide-react';
+import { FaWhatsapp } from 'react-icons/fa6';
 import { Product } from '../types';
 import { ProductVisual } from './ProductVisual';
 
@@ -7,6 +8,7 @@ interface FeaturedProductsProps {
   products: Product[];
   onSelectProduct: (product: Product) => void;
   onViewAllProducts: () => void;
+  onOpenWhatsApp?: (product: Product) => void;
   selectedCategoryName?: string | null;
   searchQuery?: string;
 }
@@ -15,6 +17,7 @@ export const FeaturedProducts: React.FC<FeaturedProductsProps> = ({
   products,
   onSelectProduct,
   onViewAllProducts,
+  onOpenWhatsApp,
   selectedCategoryName,
   searchQuery,
 }) => {
@@ -121,16 +124,30 @@ export const FeaturedProducts: React.FC<FeaturedProductsProps> = ({
                     )}
                   </div>
 
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelectProduct(product);
-                    }}
-                    className="bg-slate-100 hover:bg-[#E0183D] hover:text-white text-slate-700 p-1.5 rounded-lg transition active:scale-90 flex items-center gap-1 text-[10px] font-bold shrink-0"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>Specs</span>
-                  </button>
+                  <div className="flex items-center gap-1">
+                    {onOpenWhatsApp && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenWhatsApp(product);
+                        }}
+                        title="Enquire on WhatsApp (With Photo & Specs)"
+                        className="bg-[#25D366] hover:bg-[#20ba5a] text-white p-1.5 rounded-lg transition active:scale-90 flex items-center justify-center shrink-0 shadow-sm"
+                      >
+                        <FaWhatsapp size={14} />
+                      </button>
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectProduct(product);
+                      }}
+                      className="bg-slate-100 hover:bg-[#E0183D] hover:text-white text-slate-700 p-1.5 rounded-lg transition active:scale-90 flex items-center gap-1 text-[10px] font-bold shrink-0"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Specs</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -197,16 +214,30 @@ export const FeaturedProducts: React.FC<FeaturedProductsProps> = ({
                     )}
                   </div>
 
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelectProduct(product);
-                    }}
-                    className="bg-slate-100 hover:bg-[#E0183D] hover:text-white text-slate-700 px-3.5 py-2 rounded-xl transition active:scale-90 flex items-center gap-1.5 text-[12px] font-bold shrink-0"
-                  >
-                    <Eye className="w-4 h-4" />
-                    <span>Specs</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {onOpenWhatsApp && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenWhatsApp(product);
+                        }}
+                        title="Direct WhatsApp Quote (With Photo & Specs)"
+                        className="bg-[#25D366] hover:bg-[#20ba5a] text-white p-2 rounded-xl transition active:scale-90 flex items-center justify-center shrink-0 shadow-sm"
+                      >
+                        <FaWhatsapp size={16} />
+                      </button>
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectProduct(product);
+                      }}
+                      className="bg-slate-100 hover:bg-[#E0183D] hover:text-white text-slate-700 px-3 py-2 rounded-xl transition active:scale-90 flex items-center gap-1 text-[12px] font-bold shrink-0"
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span>Specs</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

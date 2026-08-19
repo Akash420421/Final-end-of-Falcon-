@@ -31,6 +31,8 @@ import { AdminPanelModal } from './components/AdminPanelModal';
 import { FullPageSkeletonLoader } from './components/SkeletonLoaders';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CatalogueView } from './components/CatalogueView';
+import { SEOHead } from './components/SEOHead';
+import { shareProductOnWhatsApp, getProductWhatsAppUrl } from './utils/whatsappHelper';
 import { Phone, Check, X } from 'lucide-react';
 
 function MainContent() {
@@ -157,16 +159,28 @@ function MainContent() {
     }
   };
 
-  // WhatsApp Handler
-  const handleOpenWhatsApp = (productName?: string) => {
+  // WhatsApp Handler with IndiaMART-style photo & specs support
+  const handleOpenWhatsApp = (productOrName?: Product | string | null) => {
     const rawPhone = companyDetails?.whatsapp || companyDetails?.phone || '+91 97175 49515';
-    const cleanPhone = String(rawPhone).replace(/[^0-9]/g, '');
-    const company = companyDetails?.companyName || 'Verma Enterprises';
-    const brand = companyDetails?.brandName || 'Falcon Electrics';
-    const text = productName
-      ? `Hello ${company} (${brand}), I am interested in ordering: ${productName}. Please share dealer quote.`
-      : `Hello ${company} (${brand}), I am looking for catalog & bulk pricing details.`;
-    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+    
+    if (productOrName && typeof productOrName === 'object') {
+      shareProductOnWhatsApp(productOrName, companyDetails);
+      showToast(`Opening WhatsApp with ${productOrName.name} photo & specs...`);
+      return;
+    }
+
+    if (typeof productOrName === 'string' && productOrName.trim()) {
+      const foundProduct = products.find(
+        (p) => p.name.toLowerCase() === productOrName.trim().toLowerCase() || p.id === productOrName.trim()
+      );
+      if (foundProduct) {
+        shareProductOnWhatsApp(foundProduct, companyDetails);
+        showToast(`Opening WhatsApp with ${foundProduct.name} photo & specs...`);
+        return;
+      }
+    }
+
+    const url = getProductWhatsAppUrl(null, companyDetails);
     window.open(url, '_blank');
     showToast(`Redirecting to WhatsApp (${rawPhone})...`);
   };
@@ -198,6 +212,9 @@ function MainContent() {
 
   return (
     <div className={`min-h-screen ${activeTab === 'CATALOGUE' ? 'bg-slate-950' : 'bg-[#F7F7F8]'} flex flex-col w-full selection:bg-red-500 selection:text-white`}>
+      {/* Dynamic SEO & JSON-LD Structured Data */}
+      <SEOHead />
+
       {firebaseError && (
         <div className="bg-red-950 text-red-200 px-4 py-2 text-xs font-bold flex items-center justify-between sticky top-0 z-50 border-b border-red-800 shadow-lg">
           <span className="flex items-center gap-2">
@@ -303,6 +320,7 @@ function MainContent() {
                 selectedCategoryName={selectedCategoryObj?.title}
                 searchQuery={searchQuery}
                 onSelectProduct={handleSelectProduct}
+                onOpenWhatsApp={(prod) => handleOpenWhatsApp(prod)}
                 onViewAllProducts={() => {
                   setSearchQuery('');
                   handleSelectCategory(null);
@@ -344,13 +362,13 @@ function MainContent() {
             searchQuery={searchQuery}
             onSearchChange={(q) => setSearchQuery(q)}
             onSelectProduct={handleSelectProduct}
-            onOpenWhatsApp={(prodName) => handleOpenWhatsApp(prodName)}
+            onOpenWhatsApp={(prod) => handleOpenWhatsApp(prod)}
           />
         )}
 
         {activeTab === 'CATALOGUE' && (
           <CatalogueView
-            onOpenWhatsApp={(prodName) => handleOpenWhatsApp(prodName)}
+            onOpenWhatsApp={(prod) => handleOpenWhatsApp(prod)}
           />
         )}
 
@@ -392,7 +410,7 @@ function MainContent() {
       <ProductDetailsModal
         product={selectedProduct}
         onClose={handleCloseProductModal}
-        onOpenWhatsApp={(prodName) => handleOpenWhatsApp(prodName)}
+        onOpenWhatsApp={(prod) => handleOpenWhatsApp(prod)}
       />
 
       {/* Mobile Side Menu Drawer */}

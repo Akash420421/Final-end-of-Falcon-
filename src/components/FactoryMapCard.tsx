@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigation, ExternalLink, MapPin } from 'lucide-react';
 import { useFalconStore } from '../context/StoreContext';
+import { isSafeMapsEmbedUrl } from '../utils/security';
 
 interface FactoryMapCardProps {
   className?: string;
@@ -17,20 +18,24 @@ export const FactoryMapCard: React.FC<FactoryMapCardProps> = ({
     companyDetails?.mapQuery?.trim() ||
     `${companyDetails?.companyName || 'Verma Enterprises'}, ${companyDetails?.address || '109-A/D, Block A, Vikas Nagar Extn, Uttam Nagar, New Delhi 110059'}`;
 
-  // Direct Google Maps Embed URL or iframe code
-  let embedSrc = `https://maps.google.com/maps?q=${encodeURIComponent(
+  // Default standard Google Maps embed URL
+  const defaultEmbedSrc = `https://maps.google.com/maps?q=${encodeURIComponent(
     mapQuery
   )}&t=m&z=${companyDetails?.location?.zoom || 15}&ie=UTF8&iwloc=&output=embed`;
 
+  let embedSrc = defaultEmbedSrc;
+
   if (companyDetails?.googleMapsEmbedUrl?.trim()) {
     const rawEmbed = companyDetails.googleMapsEmbedUrl.trim();
+    let extractedSrc = rawEmbed;
     if (rawEmbed.includes('<iframe')) {
       const match = rawEmbed.match(/src=["']([^"']+)["']/);
       if (match && match[1]) {
-        embedSrc = match[1];
+        extractedSrc = match[1];
       }
-    } else {
-      embedSrc = rawEmbed;
+    }
+    if (isSafeMapsEmbedUrl(extractedSrc)) {
+      embedSrc = extractedSrc;
     }
   }
 

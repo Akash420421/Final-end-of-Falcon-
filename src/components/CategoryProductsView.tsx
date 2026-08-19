@@ -13,7 +13,7 @@ interface CategoryProductsViewProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onSelectProduct: (product: Product) => void;
-  onOpenWhatsApp: (productName?: string) => void;
+  onOpenWhatsApp: (productOrName: Product | string) => void;
   isLoading?: boolean;
 }
 
@@ -317,11 +317,11 @@ export const CategoryProductsView: React.FC<CategoryProductsViewProps> = ({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onOpenWhatsApp(product.name);
+                    onOpenWhatsApp(product);
                   }}
-                  className="w-full bg-[#25D366] hover:bg-[#20ba5a] text-white font-bold text-[10px] lg:text-[12px] py-1.5 lg:py-2.5 rounded-lg lg:rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition active:scale-95"
+                  className="w-full bg-[#25D366] hover:bg-[#20ba5a] text-white font-bold text-[10px] lg:text-[12px] py-1.5 lg:py-2.5 rounded-lg lg:rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition active:scale-95 group"
                 >
-                  <FaWhatsapp size={13} className="lg:scale-110" />
+                  <FaWhatsapp size={13} className="lg:scale-110 group-hover:scale-125 transition-transform" />
                   <span>WhatsApp Inquiry</span>
                 </button>
               </div>

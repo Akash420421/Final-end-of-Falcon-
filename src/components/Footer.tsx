@@ -30,31 +30,31 @@ export const Footer: React.FC<FooterProps> = ({ onOpenWhatsApp, onOpenPhoneModal
           </div>
 
           {/* Contact Details */}
-          <div className="bg-white/5 rounded-xl lg:rounded-2xl p-3.5 lg:p-6 border border-white/10 flex flex-col gap-2.5 lg:gap-3 text-[11px] lg:text-[13px] text-slate-300 lg:col-span-6">
+          <address className="not-italic bg-white/5 rounded-xl lg:rounded-2xl p-3.5 lg:p-6 border border-white/10 flex flex-col gap-2.5 lg:gap-3 text-[11px] lg:text-[13px] text-slate-300 lg:col-span-6" itemScope itemType="https://schema.org/PostalAddress">
             <h4 className="text-[11px] lg:text-[13px] font-bold text-white uppercase tracking-wider text-[#E0183D]">
               Factory & Sales Office
             </h4>
 
             <div className="flex items-start gap-2 lg:gap-3">
               <MapPin className="w-4 h-4 text-[#E0183D] shrink-0 mt-0.5" />
-              <span>{companyDetails.address}</span>
+              <span itemProp="streetAddress">{companyDetails.address}</span>
             </div>
 
             <div className="flex items-center gap-2 lg:gap-3 cursor-pointer hover:text-white" onClick={onOpenPhoneModal}>
               <Phone className="w-4 h-4 text-[#E0183D] shrink-0" />
-              <span className="font-medium">{companyDetails.phone}</span>
+              <a href={`tel:${String(companyDetails.phone).replace(/[^0-9+]/g, '')}`} itemProp="telephone" className="font-medium hover:underline">{companyDetails.phone}</a>
             </div>
 
             <div className="flex items-center gap-2 lg:gap-3">
               <Mail className="w-4 h-4 text-[#E0183D] shrink-0" />
-              <a href={`mailto:${companyDetails.email}`} className="hover:text-white font-medium">{companyDetails.email}</a>
+              <a href={`mailto:${companyDetails.email}`} itemProp="email" className="hover:text-white font-medium">{companyDetails.email}</a>
             </div>
 
             <div className="flex items-center gap-2 lg:gap-3 text-slate-400 pt-1 border-t border-white/10 text-[10px] lg:text-[12px]">
               <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <span>GSTIN: {companyDetails.gstin}</span>
             </div>
-          </div>
+          </address>
         </div>
 
         {/* Official Social Links with Real Brand Logos */}

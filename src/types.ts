@@ -79,6 +79,24 @@ export interface CatalogueSettings {
   pages: CataloguePage[];
 }
 
+export interface HeroContent {
+  badge?: string;
+  showBadge?: boolean;
+  headline: string;
+  subtitle: string;
+  switchImageUrl: string;
+  switchImages?: string[];
+  showHeroBgShape?: boolean;
+  heroBgColor?: string;
+}
+
+export interface WhyChooseItem {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+}
+
 export interface CompanyDetails {
   brandName: string;
   companyName: string;
@@ -95,14 +113,17 @@ export interface CompanyDetails {
   googleMapsEmbedUrl?: string;
   googleMapsDirectionsUrl?: string;
   phone: string;
+  secondaryPhone?: string;
   whatsapp: string;
   email: string;
   gstin: string;
   businessHours: string;
+  timing?: string;
   facebook: string;
   instagram: string;
   quote: string;
   visitingCardImageUrl?: string;
+  visitingCardUrl?: string;
   headerTheme?: string;
   location: {
     lat: number;

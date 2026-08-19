@@ -27,6 +27,8 @@ export async function uploadOrCompressImage(
     return dataUrlOrFile;
   }
 
+  const cleanFolder = folder.replace(/[^a-zA-Z0-9_-]/g, '') || 'images';
+
   try {
     let inputBlob: Blob;
     if (typeof dataUrlOrFile === 'string') {
@@ -43,7 +45,8 @@ export async function uploadOrCompressImage(
       quality: 0.80,
     });
 
-    const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(2, 9)}.webp`;
+    const randomSuffix = Math.random().toString(36).substring(2, 9);
+    const fileName = `${cleanFolder}/${Date.now()}_${randomSuffix}.webp`;
 
     // 2. Upload to Supabase Storage with 1-year CDN caching
     const { data: uploadData, error: uploadError } = await supabase.storage
@@ -94,9 +97,11 @@ export async function uploadDocumentFile(
 ): Promise<string> {
   if (!file) return '';
 
+  const cleanFolder = folder.replace(/[^a-zA-Z0-9_-]/g, '') || 'documents';
+
   try {
     const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const storagePath = `${folder}/${Date.now()}_${cleanFileName}`;
+    const storagePath = `${cleanFolder}/${Date.now()}_${cleanFileName}`;
 
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from(BUCKET_NAME)

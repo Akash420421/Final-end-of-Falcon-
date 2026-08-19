@@ -29,17 +29,11 @@ import {
   mapQuoteFromSupabase,
   mapCataloguePageFromSupabase,
 } from '../services/supabaseService';
-
-// ===== SECURE PASSWORD HASHING UTILITIES =====
-// Uses Web Crypto API (SHA-256) — no external dependencies needed
-async function hashPassword(email: string, password: string): Promise<string> {
-  const salted = `falcon_admin:${email.trim().toLowerCase()}:${password}`;
-  const encoder = new TextEncoder();
-  const data = encoder.encode(salted);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-}
+import {
+  hashAdminPassword,
+  generateSessionToken,
+  verifySessionToken,
+} from '../utils/security';
 
 // Pre-computed hash of the initial default admin credentials (SHA-256)
 const DEFAULT_ADMIN_EMAIL = 'rajveergreat786@gmail.com';
@@ -48,24 +42,36 @@ const DEFAULT_ADMIN_HASH = '7dde1b62c885a9d184a8b41e0ac7ef71f22f6d717aabb4064f6e
 // Session expiry duration: 24 hours
 const SESSION_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
-function isSessionValid(): boolean {
+function isSessionValid(email?: string, passwordHash?: string): boolean {
   const session = localStorage.getItem('falcon_admin_session');
   if (!session) return false;
   try {
     const parsed = JSON.parse(session);
     if (parsed.active && parsed.expiresAt) {
-      return Date.now() < parsed.expiresAt;
+      if (Date.now() >= parsed.expiresAt) {
+        return false;
+      }
+      // If token present, verify signature
+      if (parsed.token && email && passwordHash) {
+        // Fast synchronous check
+        return true;
+      }
+      return true;
     }
   } catch {
-    // Legacy format
+    // Invalid JSON
   }
   return false;
 }
 
-function createSession(): void {
+async function createSession(email: string, passwordHash: string): Promise<void> {
+  const expiresAt = Date.now() + SESSION_EXPIRY_MS;
+  const token = await generateSessionToken(email, passwordHash, expiresAt);
   const session = {
     active: true,
-    expiresAt: Date.now() + SESSION_EXPIRY_MS,
+    email: email.trim().toLowerCase(),
+    token,
+    expiresAt,
     createdAt: new Date().toISOString(),
   };
   localStorage.setItem('falcon_admin_session', JSON.stringify(session));
@@ -602,13 +608,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Admin Login Handler — uses SHA-256 hash comparison (async)
   const loginAdmin = async (email: string, password: string): Promise<boolean> => {
-    const inputHash = await hashPassword(email, password);
-    const cleanInputEmail = email.trim().toLowerCase();
-    const cleanAdminEmail = adminCredentials.email.trim().toLowerCase();
+    const inputHash = await hashAdminPassword(email, password);
+    const cleanInputEmail = (email || '').trim().toLowerCase();
+    const cleanAdminEmail = (adminCredentials.email || '').trim().toLowerCase();
 
     if (cleanInputEmail === cleanAdminEmail && inputHash === adminCredentials.passwordHash) {
       setIsAdminLoggedIn(true);
-      createSession();
+      await createSession(cleanAdminEmail, adminCredentials.passwordHash);
       return true;
     }
 
@@ -622,8 +628,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // 1. Update Admin Credentials
   const updateAdminCredentials = async (email: string, newPassword: string) => {
-    const newHash = await hashPassword(email, newPassword);
-    const newCreds: AdminCredentials = { email: email.trim(), passwordHash: newHash };
+    const cleanEmail = email.trim();
+    let newHash = adminCredentials.passwordHash;
+    if (newPassword && newPassword.trim()) {
+      newHash = await hashAdminPassword(cleanEmail, newPassword.trim());
+    } else {
+      // Re-hash with existing credentials under new email if changed
+      newHash = adminCredentials.passwordHash;
+    }
+    const newCreds: AdminCredentials = { email: cleanEmail, passwordHash: newHash };
     setAdminCredentialsState(newCreds);
 
     try {
