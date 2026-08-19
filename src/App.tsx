@@ -159,13 +159,13 @@ function MainContent() {
     }
   };
 
-  // WhatsApp Handler with IndiaMART-style photo & specs support
+  // WhatsApp Handler
   const handleOpenWhatsApp = (productOrName?: Product | string | null) => {
     const rawPhone = companyDetails?.whatsapp || companyDetails?.phone || '+91 97175 49515';
     
     if (productOrName && typeof productOrName === 'object') {
       shareProductOnWhatsApp(productOrName, companyDetails);
-      showToast(`Opening WhatsApp with ${productOrName.name} photo & specs...`);
+      showToast(`Opening WhatsApp for ${productOrName.name}...`);
       return;
     }
 
@@ -175,7 +175,7 @@ function MainContent() {
       );
       if (foundProduct) {
         shareProductOnWhatsApp(foundProduct, companyDetails);
-        showToast(`Opening WhatsApp with ${foundProduct.name} photo & specs...`);
+        showToast(`Opening WhatsApp for ${foundProduct.name}...`);
         return;
       }
     }

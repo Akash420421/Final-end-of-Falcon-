@@ -131,7 +131,7 @@ export const FeaturedProducts: React.FC<FeaturedProductsProps> = ({
                           e.stopPropagation();
                           onOpenWhatsApp(product);
                         }}
-                        title="Enquire on WhatsApp (With Photo & Specs)"
+                        title="WhatsApp Enquiry"
                         className="bg-[#25D366] hover:bg-[#20ba5a] text-white p-1.5 rounded-lg transition active:scale-90 flex items-center justify-center shrink-0 shadow-sm"
                       >
                         <FaWhatsapp size={14} />
@@ -221,7 +221,7 @@ export const FeaturedProducts: React.FC<FeaturedProductsProps> = ({
                           e.stopPropagation();
                           onOpenWhatsApp(product);
                         }}
-                        title="Direct WhatsApp Quote (With Photo & Specs)"
+                        title="WhatsApp Enquiry"
                         className="bg-[#25D366] hover:bg-[#20ba5a] text-white p-2 rounded-xl transition active:scale-90 flex items-center justify-center shrink-0 shadow-sm"
                       >
                         <FaWhatsapp size={16} />

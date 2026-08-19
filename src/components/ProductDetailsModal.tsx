@@ -171,21 +171,18 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
           </div>
         )}
 
-        {/* Action CTA - IndiaMART Style WhatsApp Enquiry with Photo & Specs */}
-        <div className="pt-2 lg:pt-4 border-t border-slate-200 space-y-2">
+        {/* Action CTA */}
+        <div className="pt-2 lg:pt-4 border-t border-slate-200">
           <button
             onClick={() => {
               onClose();
               onOpenWhatsApp(product);
             }}
-            className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-[13px] lg:text-[15px] py-3 lg:py-3.5 rounded-xl lg:rounded-2xl flex items-center justify-center gap-2 shadow-md active:scale-95 transition group"
+            className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-[13px] lg:text-[15px] py-3 lg:py-3.5 rounded-xl lg:rounded-2xl flex items-center justify-center gap-2 shadow-md active:scale-95 transition"
           >
-            <FaWhatsapp size={20} className="group-hover:scale-110 transition-transform" />
-            <span>Contact Supplier on WhatsApp (With Photo & Specs)</span>
+            <FaWhatsapp size={18} className="lg:scale-110" />
+            <span>WhatsApp Enquiry</span>
           </button>
-          <p className="text-[11px] text-center text-slate-500 font-medium">
-            ⚡ Instant quotation message with product photo, rate & specs sent directly to factory
-          </p>
         </div>
 
       </div>
