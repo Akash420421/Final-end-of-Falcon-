@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Factory, Quote, ChevronDown, ChevronUp } from 'lucide-react';
 import { useFalconStore } from '../context/StoreContext';
 
@@ -9,17 +9,29 @@ interface AboutFalconProps {
 export const AboutFalcon: React.FC<AboutFalconProps> = ({ initialExpanded = false }) => {
   const { companyDetails } = useFalconStore();
   const [isMobileExpanded, setIsMobileExpanded] = useState(initialExpanded);
+  const sectionRef = useRef<HTMLElement | null>(null);
+
+  const handleReadLess = () => {
+    setIsMobileExpanded(false);
+    if (sectionRef.current) {
+      sectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   return (
-    <section id="about-section" className="py-6 lg:py-12 px-4 lg:px-8 max-w-md lg:max-w-7xl mx-auto space-y-4">
+    <section
+      id="about-section"
+      ref={sectionRef}
+      className="py-6 lg:py-12 px-4 lg:px-8 max-w-md lg:max-w-7xl mx-auto space-y-4 scroll-mt-20"
+    >
       <div className="bg-white rounded-2xl lg:rounded-3xl border border-slate-200/90 shadow-sm lg:shadow-md p-5 lg:p-10 relative overflow-hidden transition-all duration-300">
         
         {/* Mobile View Container with Height Clamping & Smooth Dissolve Animation */}
         <div
-          className={`transition-all duration-500 ease-in-out ${
+          className={`transition-[max-height,opacity] duration-500 ease-in-out ${
             isMobileExpanded
-              ? 'max-h-[2500px] opacity-100'
-              : 'max-h-[220px] lg:max-h-none overflow-hidden relative'
+              ? 'max-h-[1800px] opacity-100'
+              : 'max-h-[210px] lg:max-h-none overflow-hidden relative opacity-95'
           }`}
         >
           <div className="lg:grid lg:grid-cols-12 lg:gap-10 lg:items-start">
@@ -141,18 +153,14 @@ export const AboutFalcon: React.FC<AboutFalconProps> = ({ initialExpanded = fals
           </div>
         )}
 
-        {/* Mobile Show Less Button (Visible on mobile when expanded) */}
+        {/* Mobile Read Less Button (Visible on mobile when expanded) */}
         {isMobileExpanded && (
           <div className="lg:hidden pt-4 mt-2 border-t border-slate-100 flex justify-center">
             <button
-              onClick={() => {
-                setIsMobileExpanded(false);
-                const el = document.getElementById('about-section');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold px-4 py-1.5 rounded-full flex items-center gap-1.5 transition active:scale-95"
+              onClick={handleReadLess}
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold px-4 py-1.5 rounded-full flex items-center gap-1.5 transition active:scale-95 shadow-sm"
             >
-              <span>Show Less</span>
+              <span>Read Less</span>
               <ChevronUp className="w-3.5 h-3.5 stroke-[2.5]" />
             </button>
           </div>

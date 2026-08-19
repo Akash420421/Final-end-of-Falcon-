@@ -64,17 +64,51 @@ export const ProtectedCatalogueCanvas: React.FC<ProtectedCatalogueCanvasProps> =
 
       ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
 
-      // Subtle diagonal watermark protection (impossible to remove without corrupting image)
+      // 1. High-Density Diagonal Watermark Grid across the entire canvas
       ctx.save();
       ctx.translate(width / 2, height / 2);
-      ctx.rotate(-Math.PI / 6);
-      ctx.font = '900 13px system-ui, sans-serif';
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.04)';
+      ctx.rotate(-Math.PI / 6); // -30 degrees
+      
+      const fontSize = Math.max(12, Math.round(width * 0.022));
+      ctx.font = `900 ${fontSize}px 'Plus Jakarta Sans', system-ui, sans-serif`;
       ctx.textAlign = 'center';
-      ctx.letterSpacing = '4px';
-      for (let y = -height; y < height; y += 120) {
-        ctx.fillText('FALCON ELECTRICS • CONFIDENTIAL CATALOGUE • PROTECTED', 0, y);
+      ctx.textBaseline = 'middle';
+
+      const lineSpacing = Math.max(80, Math.round(height * 0.12));
+      const colSpacing = Math.max(320, Math.round(width * 0.7));
+
+      for (let y = -height * 1.5; y < height * 1.5; y += lineSpacing) {
+        const isAlternate = Math.floor(y / lineSpacing) % 2 === 0;
+        ctx.fillStyle = isAlternate ? 'rgba(224, 24, 61, 0.11)' : 'rgba(15, 23, 42, 0.10)';
+        
+        for (let x = -width * 1.5; x < width * 1.5; x += colSpacing) {
+          const text = isAlternate
+            ? '⚡ FALCON ELECTRICS • CONFIDENTIAL CATALOGUE • PROTECTED'
+            : '🔒 VERMA ENTERPRISES (DELHI) • NOT FOR REPRODUCTION';
+          ctx.fillText(text, x, y);
+        }
       }
+      ctx.restore();
+
+      // 2. Central Watermark Security Seal
+      ctx.save();
+      ctx.translate(width / 2, height / 2);
+      ctx.font = `800 ${Math.max(14, Math.round(width * 0.028))}px 'Plus Jakarta Sans', system-ui, sans-serif`;
+      ctx.fillStyle = 'rgba(224, 24, 61, 0.13)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⚡ FALCON ELECTRICS ⚡', 0, -10);
+      ctx.font = `700 ${Math.max(10, Math.round(width * 0.018))}px 'Plus Jakarta Sans', system-ui, sans-serif`;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.12)';
+      ctx.fillText('VERMA ENTERPRISES — OFFICIAL ORIGINAL', 0, 12);
+      ctx.restore();
+
+      // 3. Bottom Security Verification Bar
+      ctx.save();
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.65)';
+      ctx.font = `700 ${Math.max(9, Math.round(width * 0.016))}px 'Plus Jakarta Sans', system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('🔒 OFFICIAL FALCON ELECTRICS (VERMA ENTERPRISES) B2B CATALOGUE — PROTECTED CONTENT', width / 2, height - 12);
       ctx.restore();
     }
   }, [isBlackout]);

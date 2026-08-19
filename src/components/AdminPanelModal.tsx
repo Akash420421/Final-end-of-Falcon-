@@ -356,10 +356,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
     console.log(`[AdminUpload] Starting upload for "${label}" (Slot: ${slotKey}) | File: "${file.name}" | Size: ${(file.size / 1024).toFixed(1)} KB | MIME: ${file.type}`);
 
-    // 20MB upper safety limit before client-side canvas compression
-    if (file.size > 20 * 1024 * 1024) {
+    // 25MB upper safety limit before client-side canvas compression
+    if (file.size > 25 * 1024 * 1024) {
       const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
-      alert(`❌ ${label} file is too large (${sizeMb} MB). Please choose an image under 20 MB.`);
+      alert(`❌ ${label} file is too large (${sizeMb} MB). Please choose an image under 25 MB.`);
       e.target.value = '';
       return;
     }
@@ -704,7 +704,28 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
       </div>
 
       {/* Main Admin Body Section */}
-      <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 space-y-6">
+      <main className="flex-1 max-w-5xl w-full mx-auto p-3.5 sm:p-6 space-y-5">
+        {/* Mobile-Friendly Storage & Permanence Info Card */}
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-start gap-2.5">
+            <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0 mt-0.5 sm:mt-0">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="font-extrabold text-slate-200 text-[12px] sm:text-xs">
+                Permanent Cloud Storage Active (No 24-Hour Expiry)
+              </p>
+              <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                All photos, logos & catalogue pages are permanently stored in Supabase Storage. Supports images up to <strong className="text-white">25 MB</strong> with automatic high-speed WebP compression.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+            <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+              Max 25 MB / Photo
+            </span>
+          </div>
+        </div>
           {/* TAB 1: LOGOS & HERO IMAGE */}
           {activeTab === 'LOGOS' && (
             <div className="space-y-6">
@@ -3456,16 +3477,77 @@ CREATE TABLE IF NOT EXISTS public.catalogue_pages (...);
                   </label>
                 </div>
 
-                {/* Size Recommendation Info */}
-                <div className="p-2 bg-slate-900 rounded-lg border border-slate-800 text-[10px] text-slate-300 space-y-0.5">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Recommended Size:</span>
-                    <span className="text-amber-400 font-bold">600 × 400 px (3:2 Ratio)</span>
+                {/* Category Card Auto-Fit vs Cover Selector */}
+                <div className="space-y-1 pt-2 border-t border-slate-900">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-300 font-bold">Image Fitting Behavior:</span>
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setCatForm((prev) => ({ ...prev, imageFit: 'contain' }))}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition border ${
+                          (catForm.imageFit || 'contain') === 'contain'
+                            ? 'bg-[#E0183D] text-white border-[#E0183D]'
+                            : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+                        }`}
+                      >
+                        Auto-Fit (Contain)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCatForm((prev) => ({ ...prev, imageFit: 'cover' }))}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition border ${
+                          catForm.imageFit === 'cover'
+                            ? 'bg-[#E0183D] text-white border-[#E0183D]'
+                            : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+                        }`}
+                      >
+                        Crop Fill (Cover)
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Auto-Fit Behavior:</span>
-                    <span className="text-emerald-400 font-bold">Automatic Contain & Center</span>
+                </div>
+
+                {/* Optional Dedicated Inside-Category Banner Icon / Logo */}
+                <div className="space-y-1.5 pt-2 border-t border-slate-900">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-slate-200 font-bold block">
+                        Separate Inside-Banner Icon (Optional)
+                      </span>
+                      <span className="text-[9px] text-slate-400">
+                        Leave blank to auto-use the category card image above
+                      </span>
+                    </div>
+                    <label className="cursor-pointer bg-slate-800 hover:bg-slate-700 text-white text-[9px] font-bold px-2 py-1 rounded flex items-center gap-1 border border-slate-700">
+                      <Upload className="w-3 h-3" />
+                      <span>Upload Banner Icon</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) =>
+                          handleFileUpload(
+                            e,
+                            (url) => setCatForm((prev) => ({ ...prev, bannerImageUrl: url })),
+                            'Banner Icon'
+                          )
+                        }
+                      />
+                    </label>
                   </div>
+                  {catForm.bannerImageUrl && (
+                    <div className="flex items-center justify-between bg-slate-900 p-1.5 rounded-lg border border-slate-800 text-[10px]">
+                      <span className="text-emerald-400 font-bold truncate max-w-[200px]">Custom Banner Icon Attached</span>
+                      <button
+                        type="button"
+                        onClick={() => setCatForm((prev) => ({ ...prev, bannerImageUrl: '' }))}
+                        className="text-red-400 hover:text-red-300 font-bold"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Paste Category Image Link */}

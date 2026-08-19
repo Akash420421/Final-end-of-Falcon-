@@ -4,7 +4,7 @@ interface ProductVisualProps {
   type: string;
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'card' | 'category' | 'hero' | 'full';
   className?: string;
-  objectFit?: 'cover' | 'contain';
+  objectFit?: 'cover' | 'contain' | 'fill';
 }
 
 export const ProductVisual: React.FC<ProductVisualProps> = ({
@@ -13,19 +13,20 @@ export const ProductVisual: React.FC<ProductVisualProps> = ({
   className = '',
   objectFit,
 }) => {
-  // Default fit: 'contain' for hero showcases, 'cover' for product cards
-  const effectiveFit = objectFit || (size === 'hero' ? 'contain' : 'cover');
+  // Default fit: 'contain' for hero showcases, logos & small icons, 'cover' for product cards
+  const effectiveFit = objectFit || (size === 'hero' || size === 'sm' ? 'contain' : 'cover');
 
   // Dimensions based on size
   let containerSize = 'w-full h-full';
-  if (size === 'sm') containerSize = 'w-14 h-14';
-  if (size === 'md') containerSize = 'w-full h-32 sm:h-36';
-  if (size === 'card') containerSize = 'w-full h-36 sm:h-40 lg:h-44';
-  if (size === 'lg') containerSize = 'w-full h-48 sm:h-56 lg:h-64';
-  if (size === 'xl') containerSize = 'w-full h-56 sm:h-72 lg:h-80';
-  if (size === 'category') containerSize = 'w-full h-full min-h-[140px] sm:min-h-[160px] lg:min-h-[190px]';
-  if (size === 'hero') containerSize = 'w-28 h-28 xs:w-32 xs:h-32 sm:w-44 sm:h-44 lg:w-60 lg:h-60 max-w-full max-h-full';
-  if (size === 'full') containerSize = 'w-full h-full';
+  if (!className.includes('w-') && !className.includes('h-')) {
+    if (size === 'sm') containerSize = 'w-14 h-14';
+    if (size === 'md') containerSize = 'w-full h-32 sm:h-36';
+    if (size === 'card') containerSize = 'w-full h-36 sm:h-40 lg:h-44';
+    if (size === 'lg') containerSize = 'w-full h-48 sm:h-56 lg:h-64';
+    if (size === 'xl') containerSize = 'w-full h-56 sm:h-72 lg:h-80';
+    if (size === 'category') containerSize = 'w-full h-full min-h-[140px] sm:min-h-[160px] lg:min-h-[190px]';
+    if (size === 'hero') containerSize = 'w-28 h-28 xs:w-32 xs:h-32 sm:w-44 sm:h-44 lg:w-60 lg:h-60 max-w-full max-h-full';
+  }
 
   // If custom uploaded image or image URL
   const isCustomImage =
@@ -43,13 +44,14 @@ export const ProductVisual: React.FC<ProductVisualProps> = ({
       type.endsWith('.svg'));
 
   if (isCustomImage) {
+    const fitClass = effectiveFit === 'contain' ? 'object-contain' : effectiveFit === 'fill' ? 'object-fill' : 'object-cover';
     return (
       <div className={`relative flex items-center justify-center ${containerSize} ${className} overflow-hidden`}>
         <img
           src={type}
           alt="Product or Category visual"
           loading="lazy"
-          className={`w-full h-full ${effectiveFit === 'contain' ? 'object-contain' : 'object-cover'} transition-transform duration-300 select-none`}
+          className={`w-full h-full ${fitClass} transition-transform duration-300 select-none`}
         />
       </div>
     );

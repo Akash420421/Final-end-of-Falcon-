@@ -187,10 +187,10 @@ export const Header: React.FC<HeaderProps> = ({
                   <>
                     {/* Mobile View (< lg): Classic compact stacked brand name */}
                     <div className="flex lg:hidden flex-col leading-tight select-none">
-                      <span className={`text-[15px] font-black tracking-wide ${themeStyles.brandTitle}`}>
+                      <span className={`text-[15px] font-black font-brand tracking-wide ${themeStyles.brandTitle}`}>
                         Falcon
                       </span>
-                      <span className="text-[9px] font-black tracking-[0.18em] uppercase text-[#E0183D]">
+                      <span className="text-[9px] font-black font-brand tracking-[0.18em] uppercase text-[#E0183D]">
                         ELECTRICS
                       </span>
                     </div>
@@ -198,10 +198,10 @@ export const Header: React.FC<HeaderProps> = ({
                     {/* Desktop View (>= lg): Single horizontal line with first letter capital for both words in black, and RED uppercase subtitle */}
                     <div className="hidden lg:flex flex-col justify-center select-none py-0.5">
                       <div className="flex items-baseline gap-1.5 leading-none">
-                        <span className="text-[20px] xl:text-[22px] font-black tracking-tight text-slate-900">
+                        <span className="text-[20px] xl:text-[22px] font-black font-brand tracking-tight text-slate-900">
                           Falcon
                         </span>
-                        <span className="text-[20px] xl:text-[22px] font-black tracking-tight text-slate-900">
+                        <span className="text-[20px] xl:text-[22px] font-black font-brand tracking-tight text-slate-900">
                           Electrics
                         </span>
                       </div>
@@ -321,15 +321,15 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          {/* Catalogue Tab */}
+          {/* Contact Tab */}
           <button
-            onClick={() => onSelectTab?.('CATALOGUE')}
+            onClick={() => onSelectTab?.('CONTACT')}
             className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-all ${
-              activeTab === 'CATALOGUE' ? themeStyles.navLinkActive : themeStyles.navLink
+              activeTab === 'CONTACT' ? themeStyles.navLinkActive : themeStyles.navLink
             }`}
           >
-            <span>Catalogue</span>
-            {activeTab === 'CATALOGUE' && (
+            <span>Contact</span>
+            {activeTab === 'CONTACT' && (
               <span className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[#E0183D] rounded-full shadow-[0_-1px_6px_rgba(224,24,61,0.6)]" />
             )}
           </button>
@@ -347,15 +347,15 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </button>
 
-          {/* Contact Tab */}
+          {/* Catalogue Tab */}
           <button
-            onClick={() => onSelectTab?.('CONTACT')}
+            onClick={() => onSelectTab?.('CATALOGUE')}
             className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-all ${
-              activeTab === 'CONTACT' ? themeStyles.navLinkActive : themeStyles.navLink
+              activeTab === 'CATALOGUE' ? themeStyles.navLinkActive : themeStyles.navLink
             }`}
           >
-            <span>Contact</span>
-            {activeTab === 'CONTACT' && (
+            <span>Catalogue</span>
+            {activeTab === 'CATALOGUE' && (
               <span className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[#E0183D] rounded-full shadow-[0_-1px_6px_rgba(224,24,61,0.6)]" />
             )}
           </button>

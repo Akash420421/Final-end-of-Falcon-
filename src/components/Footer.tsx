@@ -20,7 +20,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenWhatsApp, onOpenPhoneModal
           {/* Brand Info */}
           <div className="flex flex-col items-start lg:col-span-6">
             <div className="mb-2 lg:mb-3">
-              <span className="text-[18px] lg:text-[24px] font-black tracking-wider text-white">
+              <span className="text-[18px] lg:text-[24px] font-black font-brand tracking-wider text-white">
                 {String(companyDetails?.brandName || 'Falcon Electrics').toUpperCase()}
               </span>
             </div>

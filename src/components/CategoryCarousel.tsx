@@ -99,6 +99,7 @@ export const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
                   <ProductVisual
                     type={cat.imageUrl || cat.image}
                     size="category"
+                    objectFit={cat.imageFit || 'contain'}
                     className="w-full h-full"
                   />
                 </div>

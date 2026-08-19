@@ -134,8 +134,13 @@ export const CategoryProductsView: React.FC<CategoryProductsViewProps> = ({
           </div>
 
           <div className="flex items-start gap-3 lg:gap-5 mt-1">
-            <div className="p-2 lg:p-4 bg-white/10 rounded-xl lg:rounded-2xl backdrop-blur-sm border border-white/20 shrink-0">
-              <ProductVisual type={currentCategory.imageUrl || currentCategory.image} size="sm" />
+            <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-white/95 rounded-xl lg:rounded-2xl p-1.5 sm:p-2.5 backdrop-blur-sm border border-white/40 shadow-sm shrink-0 flex items-center justify-center overflow-hidden">
+              <ProductVisual
+                type={currentCategory.bannerImageUrl || currentCategory.imageUrl || currentCategory.image}
+                size="sm"
+                objectFit="contain"
+                className="w-full h-full"
+              />
             </div>
 
             <div>

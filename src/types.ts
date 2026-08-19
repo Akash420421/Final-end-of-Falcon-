@@ -33,6 +33,7 @@ export interface Category {
   description: string;
   image: string;
   imageUrl?: string; // Custom uploaded image URL for category
+  bannerImageUrl?: string; // Dedicated inside-banner header image/icon
   imageFit?: 'contain' | 'cover' | 'fill'; // Image fit mode for category cards (default: 'contain' auto-fit)
   bgColor: string; // Tailored category soft background
   borderColor: string;

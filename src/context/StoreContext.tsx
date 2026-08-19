@@ -309,12 +309,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     let isMounted = true;
 
-    // Safety fallback timer: Ensure site is interactive within 1.2s even if offline
+    // Safety fallback timer: Ensure site becomes interactive after 3.5s if offline/slow network
     const safetyTimer = setTimeout(() => {
       if (isMounted) {
         setIsLoading(false);
       }
-    }, 1200);
+    }, 3500);
 
     const initSupabaseSync = async () => {
       try {
