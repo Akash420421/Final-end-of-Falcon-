@@ -2,16 +2,16 @@ import React from 'react';
 import { ShieldCheck, Truck, Percent } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa6';
 import { useFalconStore } from '../context/StoreContext';
+import { openWhatsAppChat } from '../utils/whatsappHelper';
 
 export const BulkDealerCTA: React.FC = () => {
   const { companyDetails } = useFalconStore();
 
   const handleWhatsAppClick = () => {
     const company = companyDetails?.companyName || 'Verma Enterprises';
-    const message = encodeURIComponent(`Hello ${company}, I am interested in special pricing for bulk orders.`);
+    const message = `Hello ${company}, I am interested in special pricing for bulk orders.`;
     const rawPhone = companyDetails?.whatsapp || companyDetails?.phone || '+91 97175 49515';
-    const whatsappNumber = String(rawPhone).replace(/[^0-9]/g, '');
-    window.open(`https://wa.me/${whatsappNumber}?text=${message}`, '_blank');
+    openWhatsAppChat(rawPhone, message);
   };
 
   return (

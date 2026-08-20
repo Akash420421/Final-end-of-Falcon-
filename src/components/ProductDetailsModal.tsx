@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Star, ShieldCheck, Zap } from 'lucide-react';
+import { X, Star } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa6';
 import { Product } from '../types';
 import { ProductVisual } from './ProductVisual';
@@ -154,16 +154,15 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
         </div>
 
         {/* Key Features List */}
-        {product.features && (
-          <div className="mb-5 lg:mb-6 bg-red-50/50 border border-red-100 rounded-2xl p-3.5 lg:p-5">
-            <h4 className="text-[11px] lg:text-[13px] font-extrabold text-[#E0183D] uppercase tracking-wider mb-2 lg:mb-3 flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 lg:w-5 lg:h-5" />
-              <span>Technical & Safety Highlights</span>
+        {product.features && product.features.length > 0 && (
+          <div className="mb-5 lg:mb-6 pt-3 border-t border-slate-100">
+            <h4 className="text-[12px] lg:text-[14px] font-bold text-[#171827] uppercase tracking-wider mb-2.5">
+              Key Highlights
             </h4>
-            <ul className="space-y-1.5 lg:space-y-2">
+            <ul className="space-y-2">
               {product.features.map((feat, i) => (
-                <li key={i} className="text-[11px] lg:text-[13px] text-slate-700 flex items-start gap-2">
-                  <Zap className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-[#E0183D] shrink-0 mt-0.5" />
+                <li key={i} className="text-[12px] lg:text-[13.5px] text-slate-700 flex items-start gap-2.5 leading-relaxed">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-2 shrink-0" />
                   <span>{feat}</span>
                 </li>
               ))}

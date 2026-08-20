@@ -32,7 +32,7 @@ import { FullPageSkeletonLoader } from './components/SkeletonLoaders';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CatalogueView } from './components/CatalogueView';
 import { SEOHead } from './components/SEOHead';
-import { shareProductOnWhatsApp, getProductWhatsAppUrl } from './utils/whatsappHelper';
+import { shareProductOnWhatsApp, openWhatsAppChat } from './utils/whatsappHelper';
 import { Phone, Check, X } from 'lucide-react';
 
 function MainContent() {
@@ -180,9 +180,11 @@ function MainContent() {
       }
     }
 
-    const url = getProductWhatsAppUrl(null, companyDetails);
-    window.open(url, '_blank');
-    showToast(`Redirecting to WhatsApp (${rawPhone})...`);
+    const company = companyDetails?.companyName || 'Verma Enterprises';
+    const brand = companyDetails?.brandName || 'Falcon Electrics';
+    const messageText = `Hello ${company} (${brand}), I am interested in your electrical products. Please share your latest catalogue and wholesale price list.`;
+    openWhatsAppChat(rawPhone, messageText);
+    showToast(`Opening WhatsApp (${rawPhone})...`);
   };
 
   // Phone Call Handler
