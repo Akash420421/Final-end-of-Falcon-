@@ -1,11 +1,34 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import { defineConfig, Plugin } from 'vite';
+import healthCheckHandler from './api/health/supabase';
+
+function healthCheckApiPlugin(): Plugin {
+  return {
+    name: 'health-check-api-plugin',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url?.startsWith('/api/health/supabase')) {
+          try {
+            await healthCheckHandler(req as any, res as any);
+          } catch (err) {
+            console.error('[ViteDevAPI] Error handling health check:', err);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ ok: false, error: 'Internal Server Error' }));
+          }
+          return;
+        }
+        next();
+      });
+    },
+  };
+}
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), healthCheckApiPlugin()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
@@ -22,3 +45,4 @@ export default defineConfig(() => {
     },
   };
 });
+

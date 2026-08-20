@@ -1,1 +1,0 @@
-export { uploadOrCompressImage } from './supabaseStorage';

@@ -7,6 +7,11 @@ import {
   Sliders,
   Save,
   Check,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Link as LinkIcon,
 } from 'lucide-react';
 import { CompanyDetails, HeroContent } from '../../../types';
 import { ProductVisual } from '../../ProductVisual';
@@ -55,6 +60,7 @@ export const LogosBrandingTab: React.FC<LogosBrandingTabProps> = ({
 }) => {
   const [logoUrlInput, setLogoUrlInput] = useState('');
   const [customBannerUrlInput, setCustomBannerUrlInput] = useState('');
+  const [heroPhotoUrlInput, setHeroPhotoUrlInput] = useState('');
   const [editingHero, setEditingHero] = useState<HeroContent>(heroContent);
   const [editingCompany, setEditingCompany] = useState<CompanyDetails>(companyDetails);
 
@@ -479,44 +485,79 @@ export const LogosBrandingTab: React.FC<LogosBrandingTabProps> = ({
           <div>
             <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
               <Sliders className="w-4 h-4 text-[#E0183D]" />
-              Hero Section Switch Photos & Auto-Slider
+              Hero Section Switch Photos & Auto-Slider (5–8 Photos Supported)
             </h3>
             <p className="text-[11px] text-slate-400">
-              Upload 1 to 4+ photos of switches/appliances. They will automatically transition in the Hero banner.
+              Upload 5 to 6 or more high-resolution photos of switches/accessories. They will automatically slide & cycle in the Hero banner.
             </p>
           </div>
         </div>
 
         <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-4">
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate-300">
-                Active Hero Photos (
-                {(editingHero.switchImages && editingHero.switchImages.length > 0
-                  ? editingHero.switchImages
-                  : [editingHero.switchImageUrl || 'hero-fan-regulator']
-                ).length}{' '}
-                Active)
-              </span>
-              <span className="text-[10px] text-amber-400 font-semibold">
-                Auto-changes every 3 seconds
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-300">Active Hero Switch Photos</span>
+                <span className="text-[10px] font-black bg-[#E0183D]/20 text-[#E0183D] px-2.5 py-0.5 rounded-full border border-red-500/30">
+                  {(editingHero.switchImages && editingHero.switchImages.length > 0
+                    ? editingHero.switchImages
+                    : [editingHero.switchImageUrl || 'hero-fan-regulator']
+                  ).length}{' '}
+                  Images Active
+                </span>
+              </div>
+              <span className="text-[10px] text-amber-400 font-semibold hidden sm:inline">
+                ⚡ Auto-swipes every 3 seconds on website
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {/* Photos Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
               {(editingHero.switchImages && editingHero.switchImages.length > 0
                 ? editingHero.switchImages
                 : [editingHero.switchImageUrl || 'hero-fan-regulator']
-              ).map((imgUrl, imgIdx) => (
+              ).map((imgUrl, imgIdx, arr) => (
                 <div
                   key={imgIdx}
-                  className="bg-slate-950 rounded-xl border border-slate-800 p-2 relative flex flex-col items-center justify-center group"
+                  className="bg-slate-950 rounded-xl border border-slate-800 p-2 relative flex flex-col items-center justify-between group shadow-sm hover:border-slate-700 transition"
                 >
-                  <div className="w-20 h-20 flex items-center justify-center">
+                  {/* Photo Index Badge */}
+                  <span className="absolute top-1.5 left-1.5 text-[9px] font-mono font-bold bg-slate-900/90 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800">
+                    #{imgIdx + 1}
+                  </span>
+
+                  {/* Visual Preview */}
+                  <div className="w-20 h-20 flex items-center justify-center my-1 overflow-hidden">
                     <ProductVisual type={imgUrl} size="md" />
                   </div>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <span className="text-[9px] font-bold text-slate-400">Photo #{imgIdx + 1}</span>
+
+                  {/* Actions (Reorder, Crop, Delete) */}
+                  <div className="w-full flex items-center justify-between gap-1 pt-1.5 border-t border-slate-800/80">
+                    {/* Move Left */}
+                    <button
+                      type="button"
+                      disabled={imgIdx === 0}
+                      onClick={async () => {
+                        const next = [...arr];
+                        const temp = next[imgIdx - 1];
+                        next[imgIdx - 1] = next[imgIdx];
+                        next[imgIdx] = temp;
+                        const nextHero = {
+                          ...editingHero,
+                          switchImageUrl: next[0],
+                          switchImages: next,
+                        };
+                        setEditingHero(nextHero);
+                        await onUpdateHeroContent(nextHero);
+                        onShowToast(`Moved Photo #${imgIdx + 1} to position #${imgIdx}!`);
+                      }}
+                      className="p-1 text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-800 disabled:opacity-20 rounded transition"
+                      title="Move Left"
+                    >
+                      <ChevronLeft className="w-3 h-3" />
+                    </button>
+
+                    {/* Crop Button if URL is custom */}
                     {imgUrl &&
                       (imgUrl.startsWith('data:') ||
                         imgUrl.startsWith('http') ||
@@ -531,16 +572,12 @@ export const LogosBrandingTab: React.FC<LogosBrandingTabProps> = ({
                               aspectRatio: 1,
                               recommendedSizeText: '800 × 800 px (Square 1:1 ratio)',
                               onCropComplete: async (croppedUrl) => {
-                                const current =
-                                  editingHero.switchImages || [
-                                    editingHero.switchImageUrl || 'hero-fan-regulator',
-                                  ];
-                                const updated = [...current];
-                                updated[imgIdx] = croppedUrl;
+                                const next = [...arr];
+                                next[imgIdx] = croppedUrl;
                                 const nextHero = {
                                   ...editingHero,
-                                  switchImageUrl: updated[0],
-                                  switchImages: updated,
+                                  switchImageUrl: next[0],
+                                  switchImages: next,
                                 };
                                 setEditingHero(nextHero);
                                 await onUpdateHeroContent(nextHero);
@@ -548,39 +585,137 @@ export const LogosBrandingTab: React.FC<LogosBrandingTabProps> = ({
                               },
                             })
                           }
-                          className="p-1 text-amber-400 hover:text-white bg-slate-900 rounded"
+                          className="p-1 text-amber-400 hover:text-white bg-slate-900 hover:bg-slate-800 rounded transition"
                           title="Crop Image"
                         >
                           <Crop className="w-3 h-3" />
                         </button>
                       )}
+
+                    {/* Move Right */}
+                    <button
+                      type="button"
+                      disabled={imgIdx === arr.length - 1}
+                      onClick={async () => {
+                        const next = [...arr];
+                        const temp = next[imgIdx + 1];
+                        next[imgIdx + 1] = next[imgIdx];
+                        next[imgIdx] = temp;
+                        const nextHero = {
+                          ...editingHero,
+                          switchImageUrl: next[0],
+                          switchImages: next,
+                        };
+                        setEditingHero(nextHero);
+                        await onUpdateHeroContent(nextHero);
+                        onShowToast(`Moved Photo #${imgIdx + 1} to position #${imgIdx + 2}!`);
+                      }}
+                      className="p-1 text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-800 disabled:opacity-20 rounded transition"
+                      title="Move Right"
+                    >
+                      <ChevronRight className="w-3 h-3" />
+                    </button>
+
+                    {/* Delete Photo */}
+                    <button
+                      type="button"
+                      disabled={arr.length <= 1}
+                      onClick={async () => {
+                        if (confirm(`Remove Hero Photo #${imgIdx + 1}?`)) {
+                          const next = arr.filter((_, idx) => idx !== imgIdx);
+                          const nextHero = {
+                            ...editingHero,
+                            switchImageUrl: next[0] || 'hero-fan-regulator',
+                            switchImages: next,
+                          };
+                          setEditingHero(nextHero);
+                          await onUpdateHeroContent(nextHero);
+                          onShowToast(`Hero Photo #${imgIdx + 1} removed!`);
+                        }
+                      }}
+                      className="p-1 text-slate-400 hover:text-red-400 hover:bg-red-950/60 disabled:opacity-20 rounded transition"
+                      title={arr.length <= 1 ? 'At least 1 photo required' : 'Delete Photo'}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Upload New Hero Photo */}
-          <div className="pt-3 border-t border-slate-800 flex flex-wrap items-center gap-3">
-            <label className="cursor-pointer bg-[#E0183D] hover:bg-[#c01233] text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow flex items-center gap-2 min-h-[40px]">
-              <Upload className="w-4 h-4" />
-              <span>
-                {uploadingMap['Hero Photo']
-                  ? 'Uploading & Saving...'
-                  : '+ Upload New Hero Switch Photo'}
+          {/* Add New Hero Photo Options (Upload or Paste URL) */}
+          <div className="pt-3 border-t border-slate-800 space-y-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              {/* File Upload Button */}
+              <label className="cursor-pointer bg-[#E0183D] hover:bg-[#c01233] text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow flex items-center gap-2 min-h-[40px]">
+                <Upload className="w-4 h-4" />
+                <span>
+                  {uploadingMap['Hero Photo']
+                    ? 'Uploading & Saving...'
+                    : '+ Upload New Hero Photo (1 to 6+)'}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={uploadingMap['Hero Photo'] === true}
+                  onChange={(e) =>
+                    onFileUpload(
+                      e,
+                      async (url) => {
+                        const current = editingHero.switchImages || [
+                          editingHero.switchImageUrl || 'hero-fan-regulator',
+                        ];
+                        const updated = [...current, url];
+                        const nextHero = {
+                          ...editingHero,
+                          switchImageUrl: updated[0],
+                          switchImages: updated,
+                        };
+                        setEditingHero(nextHero);
+                        await onUpdateHeroContent(nextHero);
+                        onShowToast('New Hero Switch Photo added to Auto-Slider!');
+                      },
+                      'Hero Photo',
+                      'Hero Photo',
+                      {
+                        aspectRatio: 1,
+                        title: 'Crop Hero Switch Photo',
+                        recommendedSizeText: '800 × 800 px (Square 1:1 ratio, Transparent cutout recommended)',
+                      }
+                    )
+                  }
+                  className="hidden"
+                />
+              </label>
+
+              <span className="text-[10px] text-slate-400">
+                You can upload 5 to 6 or more photos for continuous auto-swiping.
               </span>
-              <input
-                type="file"
-                accept="image/*"
-                disabled={uploadingMap['Hero Photo'] === true}
-                onChange={(e) =>
-                  onFileUpload(
-                    e,
-                    async (url) => {
+            </div>
+
+            {/* Paste Photo URL */}
+            <div className="space-y-1.5 pt-1 w-full max-w-full">
+              <span className="text-[11px] text-slate-300 font-bold block">
+                Or Add Photo via Image URL Link:
+              </span>
+              <div className="flex flex-col sm:flex-row gap-2 w-full max-w-full">
+                <input
+                  type="text"
+                  value={heroPhotoUrlInput}
+                  onChange={(e) => setHeroPhotoUrlInput(e.target.value)}
+                  placeholder="Paste direct image link e.g. https://.../switch.png"
+                  className="flex-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#E0183D]"
+                />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const trimmed = heroPhotoUrlInput.trim();
+                    if (trimmed) {
                       const current = editingHero.switchImages || [
                         editingHero.switchImageUrl || 'hero-fan-regulator',
                       ];
-                      const updated = [...current, url];
+                      const updated = [...current, trimmed];
                       const nextHero = {
                         ...editingHero,
                         switchImageUrl: updated[0],
@@ -588,20 +723,17 @@ export const LogosBrandingTab: React.FC<LogosBrandingTabProps> = ({
                       };
                       setEditingHero(nextHero);
                       await onUpdateHeroContent(nextHero);
-                      onShowToast('New Hero Switch Photo added to Auto-Slider!');
-                    },
-                    'Hero Photo',
-                    'Hero Photo',
-                    {
-                      aspectRatio: 1,
-                      title: 'Crop Hero Switch Photo',
-                      recommendedSizeText: '800 × 800 px (Square 1:1 ratio)',
+                      onShowToast('Hero Photo added via URL!');
+                      setHeroPhotoUrlInput('');
                     }
-                  )
-                }
-                className="hidden"
-              />
-            </label>
+                  }}
+                  className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition border border-slate-700 shrink-0 min-h-[38px] flex items-center justify-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Photo Link</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

@@ -1,7 +1,17 @@
 {
   "version": 2,
   "framework": "vite",
+  "crons": [
+    {
+      "path": "/api/health/supabase",
+      "schedule": "0 6 * * *"
+    }
+  ],
   "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
