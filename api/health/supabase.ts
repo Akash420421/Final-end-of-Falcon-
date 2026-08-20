@@ -6,6 +6,11 @@ const DEFAULT_SUPABASE_URL = 'https://ywgosjrealgcbanelfei.supabase.co';
 const DEFAULT_SUPABASE_ANON_KEY =
   'sb_publishable_z7NKtoE8mfPYrhw-xV7X3g_DvT2J4XJ';
 
+function cleanEnvString(str?: string | null): string {
+  if (!str) return '';
+  return str.trim().replace(/^["']|["']$/g, '').trim();
+}
+
 /**
  * Vercel Serverless Function & Cron Endpoint for Supabase Health Check
  * Route: /api/health/supabase
@@ -16,8 +21,8 @@ const DEFAULT_SUPABASE_ANON_KEY =
 export default async function handler(
   req: IncomingMessage & { query?: Record<string, string>; body?: any },
   res: ServerResponse & {
-    status: (statusCode: number) => any;
-    json: (body: any) => any;
+    status?: (statusCode: number) => any;
+    json?: (body: any) => any;
   }
 ) {
   // Helper to safely write JSON responses
@@ -36,11 +41,12 @@ export default async function handler(
   }
 
   // 1. Validate Cron Secret Authentication (if CRON_SECRET is configured)
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && cronSecret.trim() !== '') {
-    const authHeader =
-      req.headers['authorization'] || req.headers['Authorization'];
-    const expectedHeader = `Bearer ${cronSecret.trim()}`;
+  const cronSecret = cleanEnvString(process.env.CRON_SECRET);
+  if (cronSecret) {
+    const rawHeader =
+      req.headers['authorization'] || req.headers['Authorization'] || '';
+    const authHeader = (Array.isArray(rawHeader) ? rawHeader[0] : rawHeader).trim();
+    const expectedHeader = `Bearer ${cronSecret}`;
 
     if (!authHeader || authHeader !== expectedHeader) {
       console.warn('[HealthCheck] Unauthorized request attempt to /api/health/supabase');
@@ -51,16 +57,22 @@ export default async function handler(
     }
   }
 
-  // 2. Resolve Supabase Environment Credentials
-  const supabaseUrl =
+  // 2. Resolve & clean Supabase Environment Credentials
+  let rawUrl = cleanEnvString(
     process.env.SUPABASE_URL ||
     process.env.VITE_SUPABASE_URL ||
-    DEFAULT_SUPABASE_URL;
+    DEFAULT_SUPABASE_URL
+  );
+  if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
+    rawUrl = `https://${rawUrl}`;
+  }
+  const supabaseUrl = rawUrl.replace(/\/+$/, '');
 
-  const supabaseAnonKey =
+  const supabaseAnonKey = cleanEnvString(
     process.env.SUPABASE_ANON_KEY ||
     process.env.VITE_SUPABASE_ANON_KEY ||
-    DEFAULT_SUPABASE_ANON_KEY;
+    DEFAULT_SUPABASE_ANON_KEY
+  );
 
   if (!supabaseUrl || !supabaseAnonKey) {
     console.error('[HealthCheck] Missing Supabase configuration variables.');
@@ -71,28 +83,30 @@ export default async function handler(
     });
   }
 
-  // 3. Execute a single, minimal SELECT query
+  // 3. Execute a single, minimal SELECT query via Direct REST API / SDK
   try {
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
+    const startTime = Date.now();
+
+    // Fast probe to Supabase PostgREST endpoint
+    const restEndpoint = `${supabaseUrl}/rest/v1/store_settings?select=id&limit=1`;
+    const response = await fetch(restEndpoint, {
+      method: 'GET',
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
+        Accept: 'application/json',
       },
     });
 
-    const startTime = Date.now();
-    const { data, error } = await supabase
-      .from('store_settings')
-      .select('id')
-      .limit(1);
-
     const latencyMs = Date.now() - startTime;
 
-    if (error) {
-      console.error('[HealthCheck] Supabase query failed:', error.message);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[HealthCheck] Supabase REST query returned non-200:', response.status, errorText);
       return sendJson(503, {
         ok: false,
         database: 'unreachable',
+        status: response.status,
       });
     }
 
@@ -108,6 +122,7 @@ export default async function handler(
     return sendJson(500, {
       ok: false,
       database: 'unreachable',
+      error: err?.message || 'Connection failed',
     });
   }
 }
