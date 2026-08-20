@@ -24,13 +24,13 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({
 }) => {
   const { companyDetails, isAdminLoggedIn } = useFalconStore();
 
-  const menuItems: { id: NavigationTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'HOME', label: 'Home Page', icon: <Home className="w-4 h-4 text-[#E0183D]" /> },
-    { id: 'ABOUT', label: 'About Falcon Electrics', icon: <Info className="w-4 h-4 text-[#E0183D]" /> },
-    { id: 'PRODUCTS', label: 'Explore Products Range', icon: <Grid className="w-4 h-4 text-[#E0183D]" /> },
-    { id: 'CATALOGUE', label: 'View Product Catalogue', icon: <BookOpen className="w-4 h-4 text-[#E0183D]" /> },
-    { id: 'WHY_US', label: 'Why Partner With Us', icon: <Award className="w-4 h-4 text-[#E0183D]" /> },
-    { id: 'CONTACT', label: 'Contact Us & Factory Location', icon: <Mail className="w-4 h-4 text-[#E0183D]" /> },
+  const menuItems: { id: NavigationTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { id: 'HOME', label: 'Home Page', icon: Home },
+    { id: 'ABOUT', label: 'About Falcon Electrics', icon: Info },
+    { id: 'PRODUCTS', label: 'Explore Products Range', icon: Grid },
+    { id: 'CATALOGUE', label: 'View Product Catalogue', icon: BookOpen },
+    { id: 'WHY_US', label: 'Why Partner With Us', icon: Award },
+    { id: 'CONTACT', label: 'Contact Us & Factory Location', icon: Mail },
   ];
 
   return (
@@ -86,18 +86,21 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({
                       onClose();
                       onOpenAdminPanel();
                     }}
-                    className="w-full text-left px-3 py-3 rounded-xl flex items-center justify-between text-[13px] font-bold bg-[#E0183D]/20 text-red-300 border border-[#E0183D]/40 hover:bg-[#E0183D]/30 transition-colors mb-2"
+                    className="w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between text-[13px] font-bold bg-[#E0183D]/15 text-red-200 border border-[#E0183D]/40 hover:bg-[#E0183D]/25 transition-colors mb-2 group"
                   >
                     <div className="flex items-center gap-3">
-                      <ShieldCheck className="w-4 h-4 text-[#E0183D]" />
+                      <div className="w-8 h-8 rounded-lg bg-[#E0183D]/30 flex items-center justify-center shrink-0">
+                        <ShieldCheck className="w-4 h-4 text-[#E0183D]" />
+                      </div>
                       <span>Admin Control Panel</span>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-red-400 opacity-80" />
+                    <ChevronRight className="w-4 h-4 text-red-400 opacity-80 group-hover:translate-x-0.5 transition-transform" />
                   </motion.button>
                 )}
 
                 {menuItems.map((item) => {
                   const isActive = activeTab === item.id;
+                  const Icon = item.icon;
                   return (
                     <motion.button
                       key={item.id}
@@ -106,9 +109,9 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({
                         onSelectTab(item.id);
                         onClose();
                       }}
-                      className={`relative w-full text-left px-3 py-3 rounded-xl flex items-center justify-between text-[13px] font-semibold transition-colors ${
+                      className={`relative w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between text-[13px] font-semibold transition-colors group ${
                         isActive
-                          ? 'text-white'
+                          ? 'text-white font-bold'
                           : 'hover:bg-white/5 text-slate-200'
                       }`}
                     >
@@ -121,10 +124,22 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({
                         />
                       )}
                       <div className="relative z-10 flex items-center gap-3">
-                        {item.icon}
+                        <div
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                            isActive
+                              ? 'bg-white/20 text-white'
+                              : 'bg-white/5 text-[#E0183D] group-hover:bg-white/10'
+                          }`}
+                        >
+                          <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-[#E0183D]'}`} />
+                        </div>
                         <span>{item.label}</span>
                       </div>
-                      <ChevronRight className="relative z-10 w-4 h-4 opacity-60" />
+                      <ChevronRight
+                        className={`relative z-10 w-4 h-4 transition-all ${
+                          isActive ? 'text-white opacity-90' : 'opacity-50 text-slate-400 group-hover:translate-x-0.5 group-hover:opacity-80'
+                        }`}
+                      />
                     </motion.button>
                   );
                 })}
