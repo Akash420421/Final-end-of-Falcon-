@@ -7,6 +7,7 @@ import {
   useLocation,
   useParams,
   useSearchParams,
+  Navigate,
 } from 'react-router-dom';
 import { NavigationTab, Product } from './types';
 import { StoreProvider, useFalconStore } from './context/StoreContext';
@@ -32,10 +33,15 @@ import { FullPageSkeletonLoader } from './components/SkeletonLoaders';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CatalogueView } from './components/CatalogueView';
 import { SEOHead } from './components/SEOHead';
+import { initAutomatedHeartbeat } from './services/heartbeatService';
 import { shareProductOnWhatsApp, openWhatsAppChat } from './utils/whatsappHelper';
 import { Phone, X } from 'lucide-react';
 
 function MainContent() {
+  // Initialize silent 24h keep-alive heartbeat in the background
+  useEffect(() => {
+    initAutomatedHeartbeat();
+  }, []);
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
@@ -212,9 +218,8 @@ function MainContent() {
   // Standalone Admin Panel Route — requires authentication
   if (isAdminPanelOpen) {
     if (!isAdminLoggedIn) {
-      // Not authenticated — redirect to home
-      navigate('/', { replace: true });
-      return null;
+      // Not authenticated — redirect to home cleanly without setState during render
+      return <Navigate to="/" replace />;
     }
     return (
       <AdminPanelModal

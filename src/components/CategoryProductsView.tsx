@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Eye, Star, Fan, Flame, Sliders, Zap, Grid } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa6';
 import { Product } from '../types';
@@ -83,18 +84,29 @@ export const CategoryProductsView: React.FC<CategoryProductsViewProps> = ({
         )}
       </div>
 
-      {/* Category Pills Selector */}
+      {/* Category Pills Selector with Shared Layout Indicator */}
       <div className="flex items-center gap-1.5 lg:gap-2.5 overflow-x-auto no-scrollbar pb-1 pt-0.5 smooth-scroll">
         <button
           onClick={() => onSelectCategory(null)}
-          className={`shrink-0 px-3 lg:px-4 py-1.5 lg:py-2.5 rounded-xl lg:rounded-2xl text-[11px] lg:text-[13px] font-bold transition flex items-center gap-1.5 lg:gap-2 border ${
+          className={`relative shrink-0 px-3 lg:px-4 py-1.5 lg:py-2.5 rounded-xl lg:rounded-2xl text-[11px] lg:text-[13px] font-bold flex items-center gap-1.5 lg:gap-2 border transition-colors ${
             selectedCategoryId === null
-              ? 'bg-[#101124] text-white border-[#101124] shadow-sm'
+              ? 'text-white border-[#101124]'
               : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
           }`}
+          style={{ willChange: 'transform' }}
         >
-          <Grid className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-          <span>All Products</span>
+          {selectedCategoryId === null && (
+            <motion.div
+              layoutId="categoryActivePillBg"
+              className="absolute inset-0 bg-[#101124] rounded-xl lg:rounded-2xl shadow-sm -z-0"
+              transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+              style={{ willChange: 'transform' }}
+            />
+          )}
+          <span className="relative z-10 flex items-center gap-1.5 lg:gap-2">
+            <Grid className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+            <span>All Products</span>
+          </span>
         </button>
 
         {categories.map((cat) => {
@@ -103,112 +115,153 @@ export const CategoryProductsView: React.FC<CategoryProductsViewProps> = ({
             <button
               key={cat.id}
               onClick={() => onSelectCategory(cat.id)}
-              className={`shrink-0 px-3 lg:px-4 py-1.5 lg:py-2.5 rounded-xl lg:rounded-2xl text-[11px] lg:text-[13px] font-bold transition flex items-center gap-1.5 lg:gap-2 border ${
+              className={`relative shrink-0 px-3 lg:px-4 py-1.5 lg:py-2.5 rounded-xl lg:rounded-2xl text-[11px] lg:text-[13px] font-bold flex items-center gap-1.5 lg:gap-2 border transition-colors ${
                 isSelected
-                  ? 'bg-[#E0183D] text-white border-[#E0183D] shadow-sm'
+                  ? 'text-white border-[#E0183D]'
                   : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
               }`}
+              style={{ willChange: 'transform' }}
             >
-              {getCategoryIcon(cat.iconName)}
-              <span>{cat.title}</span>
+              {isSelected && (
+                <motion.div
+                  layoutId="categoryActivePillBg"
+                  className="absolute inset-0 bg-[#E0183D] rounded-xl lg:rounded-2xl shadow-sm -z-0"
+                  transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                  style={{ willChange: 'transform' }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-1.5 lg:gap-2">
+                {getCategoryIcon(cat.iconName)}
+                <span>{cat.title}</span>
+              </span>
             </button>
           );
         })}
       </div>
 
-      {/* Selected Category Header Banner */}
-      {currentCategory && (() => {
-        const isCustomCatBg =
-          currentCategory.bgColor &&
-          (currentCategory.bgColor.startsWith('#') ||
-            currentCategory.bgColor.startsWith('rgb') ||
-            currentCategory.bgColor.startsWith('hsl') ||
-            currentCategory.bgColor.startsWith('linear-gradient') ||
-            currentCategory.bgColor.startsWith('radial-gradient'));
+      {/* Selected Category Header Banner with Shared Transitions */}
+      <AnimatePresence mode="wait">
+        {currentCategory && (() => {
+          const isCustomCatBg =
+            currentCategory.bgColor &&
+            (currentCategory.bgColor.startsWith('#') ||
+              currentCategory.bgColor.startsWith('rgb') ||
+              currentCategory.bgColor.startsWith('hsl') ||
+              currentCategory.bgColor.startsWith('linear-gradient') ||
+              currentCategory.bgColor.startsWith('radial-gradient'));
 
-        return (
-          <div
-            style={isCustomCatBg ? { background: currentCategory.bgColor } : undefined}
-            className={`rounded-2xl lg:rounded-3xl p-4 lg:p-8 text-white shadow-md relative overflow-hidden ${
-              !isCustomCatBg ? currentCategory.bgColor : ''
-            }`}
-          >
-            <div className="flex items-center justify-between mb-2 lg:mb-4">
-              <button
-                onClick={() => onSelectCategory(null)}
-                className="inline-flex items-center gap-1 text-[10px] lg:text-[12px] font-bold bg-white/20 hover:bg-white/30 backdrop-blur-md px-2.5 lg:px-3.5 py-1 lg:py-1.5 rounded-lg lg:rounded-xl transition"
-              >
-                <ArrowLeft className="w-3 h-3 lg:w-4 lg:h-4" />
-                <span>All Categories</span>
-              </button>
-
-              <span className="text-[9px] lg:text-[11px] font-extrabold bg-white/20 uppercase tracking-wider px-2 lg:px-3 py-0.5 lg:py-1 rounded-md lg:rounded-lg backdrop-blur-sm">
-                {currentCategory.badge}
-              </span>
-            </div>
-
-          <div className="flex items-start gap-3 lg:gap-5 mt-1">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-white/95 rounded-xl lg:rounded-2xl p-1.5 sm:p-2.5 backdrop-blur-sm border border-white/40 shadow-sm shrink-0 flex items-center justify-center overflow-hidden">
-              <ProductVisual
-                type={currentCategory.bannerImageUrl || currentCategory.imageUrl || currentCategory.image}
-                size="sm"
-                objectFit="contain"
-                className="w-full h-full"
-              />
-            </div>
-
-            <div>
-              <h1 className="text-[18px] lg:text-[28px] font-extrabold text-white leading-tight">
-                {currentCategory.title}
-              </h1>
-              <p className="text-[11px] lg:text-[15px] font-semibold text-white/90">
-                {currentCategory.subtitle}
-              </p>
-              <p className="text-[10px] lg:text-[13px] text-white/80 leading-snug mt-1 lg:mt-2 max-w-3xl">
-                {currentCategory.description}
-              </p>
-            </div>
-          </div>
-
-          {/* Sub-Categories Chips if defined */}
-          {currentCategory.subCategories && currentCategory.subCategories.length > 0 && (
-            <div className="mt-3 lg:mt-6 pt-3 lg:pt-5 border-t border-white/20">
-              <span className="text-[9px] lg:text-[11px] font-extrabold uppercase tracking-wider text-white/80 block mb-1.5 lg:mb-2.5">
-                Sub-Categories Range:
-              </span>
-              <div className="flex items-center gap-1.5 lg:gap-2.5 overflow-x-auto no-scrollbar pb-1">
-                <button
-                  onClick={() => setSelectedSubCat(null)}
-                  className={`shrink-0 px-2.5 lg:px-3.5 py-1 lg:py-1.5 rounded-lg lg:rounded-xl text-[10px] lg:text-[12px] font-bold transition ${
-                    selectedSubCat === null
-                      ? 'bg-white text-[#101124] shadow-sm font-extrabold'
-                      : 'bg-white/20 text-white hover:bg-white/30'
-                  }`}
+          return (
+            <motion.div
+              key={currentCategory.id}
+              initial={{ opacity: 0, y: 12, scale: 0.99 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.99 }}
+              transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+              style={{
+                ...(isCustomCatBg ? { background: currentCategory.bgColor } : {}),
+                willChange: 'transform, opacity',
+                transform: 'translate3d(0, 0, 0)',
+              }}
+              className={`rounded-2xl lg:rounded-3xl p-4 lg:p-8 text-white shadow-md relative overflow-hidden ${
+                !isCustomCatBg ? currentCategory.bgColor : ''
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2 lg:mb-4">
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => onSelectCategory(null)}
+                  className="inline-flex items-center gap-1 text-[10px] lg:text-[12px] font-bold bg-white/20 hover:bg-white/30 backdrop-blur-md px-2.5 lg:px-3.5 py-1 lg:py-1.5 rounded-lg lg:rounded-xl transition-colors"
                 >
-                  All {currentCategory.title}
-                </button>
-                {currentCategory.subCategories.map((sub) => {
-                  const isSubSelected = selectedSubCat === sub;
-                  return (
+                  <ArrowLeft className="w-3 h-3 lg:w-4 lg:h-4" />
+                  <span>All Categories</span>
+                </motion.button>
+
+                <span className="text-[9px] lg:text-[11px] font-extrabold bg-white/20 uppercase tracking-wider px-2 lg:px-3 py-0.5 lg:py-1 rounded-md lg:rounded-lg backdrop-blur-sm">
+                  {currentCategory.badge}
+                </span>
+              </div>
+
+              <div className="flex items-start gap-3 lg:gap-5 mt-1">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-white/95 rounded-xl lg:rounded-2xl p-1.5 sm:p-2.5 backdrop-blur-sm border border-white/40 shadow-sm shrink-0 flex items-center justify-center overflow-hidden">
+                  <ProductVisual
+                    type={currentCategory.bannerImageUrl || currentCategory.imageUrl || currentCategory.image}
+                    size="sm"
+                    objectFit="contain"
+                    className="w-full h-full"
+                  />
+                </div>
+
+                <div>
+                  <h1 className="text-[18px] lg:text-[28px] font-extrabold text-white leading-tight">
+                    {currentCategory.title}
+                  </h1>
+                  <p className="text-[11px] lg:text-[15px] font-semibold text-white/90">
+                    {currentCategory.subtitle}
+                  </p>
+                  <p className="text-[10px] lg:text-[13px] text-white/80 leading-snug mt-1 lg:mt-2 max-w-3xl">
+                    {currentCategory.description}
+                  </p>
+                </div>
+              </div>
+
+              {/* Sub-Categories Chips if defined */}
+              {currentCategory.subCategories && currentCategory.subCategories.length > 0 && (
+                <div className="mt-3 lg:mt-6 pt-3 lg:pt-5 border-t border-white/20">
+                  <span className="text-[9px] lg:text-[11px] font-extrabold uppercase tracking-wider text-white/80 block mb-1.5 lg:mb-2.5">
+                    Sub-Categories Range:
+                  </span>
+                  <div className="flex items-center gap-1.5 lg:gap-2.5 overflow-x-auto no-scrollbar pb-1">
                     <button
-                      key={sub}
-                      onClick={() => setSelectedSubCat(sub)}
-                      className={`shrink-0 px-2.5 lg:px-3.5 py-1 lg:py-1.5 rounded-lg lg:rounded-xl text-[10px] lg:text-[12px] font-bold transition ${
-                        isSubSelected
-                          ? 'bg-white text-[#E0183D] shadow-sm font-extrabold'
+                      onClick={() => setSelectedSubCat(null)}
+                      className={`relative shrink-0 px-2.5 lg:px-3.5 py-1 lg:py-1.5 rounded-lg lg:rounded-xl text-[10px] lg:text-[12px] font-bold transition-colors ${
+                        selectedSubCat === null
+                          ? 'text-[#101124] font-extrabold'
                           : 'bg-white/20 text-white hover:bg-white/30'
                       }`}
+                      style={{ willChange: 'transform' }}
                     >
-                      {sub}
+                      {selectedSubCat === null && (
+                        <motion.div
+                          layoutId="subCategoryActiveChipBg"
+                          className="absolute inset-0 bg-white rounded-lg lg:rounded-xl shadow-sm -z-0"
+                          transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                          style={{ willChange: 'transform' }}
+                        />
+                      )}
+                      <span className="relative z-10">All {currentCategory.title}</span>
                     </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-        );
-      })()}
+                    {currentCategory.subCategories.map((sub) => {
+                      const isSubSelected = selectedSubCat === sub;
+                      return (
+                        <button
+                          key={sub}
+                          onClick={() => setSelectedSubCat(sub)}
+                          className={`relative shrink-0 px-2.5 lg:px-3.5 py-1 lg:py-1.5 rounded-lg lg:rounded-xl text-[10px] lg:text-[12px] font-bold transition-colors ${
+                            isSubSelected
+                              ? 'text-[#E0183D] font-extrabold'
+                              : 'bg-white/20 text-white hover:bg-white/30'
+                          }`}
+                          style={{ willChange: 'transform' }}
+                        >
+                          {isSubSelected && (
+                            <motion.div
+                              layoutId="subCategoryActiveChipBg"
+                              className="absolute inset-0 bg-white rounded-lg lg:rounded-xl shadow-sm -z-0"
+                              transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                              style={{ willChange: 'transform' }}
+                            />
+                          )}
+                          <span className="relative z-10">{sub}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
 
       {/* Product List Title & Count */}
       <div className="flex items-center justify-between pt-1">

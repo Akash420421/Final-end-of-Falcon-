@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Menu, Phone, ChevronDown } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa6';
 import { useFalconStore } from '../context/StoreContext';
@@ -223,26 +224,36 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Home Tab */}
           <button
             onClick={() => onSelectTab?.('HOME')}
-            className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-all ${
+            className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-colors ${
               activeTab === 'HOME' ? themeStyles.navLinkActive : themeStyles.navLink
             }`}
           >
-            <span>Home</span>
+            <span className="relative z-10">Home</span>
             {activeTab === 'HOME' && (
-              <span className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[#E0183D] rounded-full shadow-[0_-1px_6px_rgba(224,24,61,0.6)]" />
+              <motion.span
+                layoutId="headerNavIndicator"
+                className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[#E0183D] rounded-full shadow-[0_-1px_6px_rgba(224,24,61,0.6)]"
+                transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                style={{ willChange: 'transform' }}
+              />
             )}
           </button>
 
           {/* About Tab */}
           <button
             onClick={() => onSelectTab?.('ABOUT')}
-            className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-all ${
+            className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-colors ${
               activeTab === 'ABOUT' ? themeStyles.navLinkActive : themeStyles.navLink
             }`}
           >
-            <span>About</span>
+            <span className="relative z-10">About</span>
             {activeTab === 'ABOUT' && (
-              <span className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[#E0183D] rounded-full shadow-[0_-1px_6px_rgba(224,24,61,0.6)]" />
+              <motion.span
+                layoutId="headerNavIndicator"
+                className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[#E0183D] rounded-full shadow-[0_-1px_6px_rgba(224,24,61,0.6)]"
+                transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                style={{ willChange: 'transform' }}
+              />
             )}
           </button>
 
@@ -257,106 +268,138 @@ export const Header: React.FC<HeaderProps> = ({
                 onSelectTab?.('PRODUCTS');
                 onOpenProductsDropdown?.();
               }}
-              className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-all flex items-center gap-1.5 ${
+              className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-colors flex items-center gap-1.5 ${
                 activeTab === 'PRODUCTS' ? themeStyles.navLinkActive : themeStyles.navLink
               }`}
             >
-              <span>Products</span>
+              <span className="relative z-10">Products</span>
               <ChevronDown
                 className={`w-3.5 h-3.5 transition-transform duration-200 ${
                   isProductsHovered ? 'rotate-180 text-[#E0183D]' : 'opacity-70'
                 }`}
               />
               {activeTab === 'PRODUCTS' && (
-                <span className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[#E0183D] rounded-full shadow-[0_-1px_6px_rgba(224,24,61,0.6)]" />
+                <motion.span
+                  layoutId="headerNavIndicator"
+                  className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[#E0183D] rounded-full shadow-[0_-1px_6px_rgba(224,24,61,0.6)]"
+                  transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                  style={{ willChange: 'transform' }}
+                />
               )}
             </button>
 
-            {/* Desktop Products Dropdown Menu */}
-            {isProductsHovered && (
-              <div className="absolute top-full left-0 mt-1 w-64 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                <div className="px-3 pb-2 mb-1.5 border-b border-slate-100 flex items-center justify-between">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                    Product Categories
-                  </span>
-                  <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
-                    {categories.length} Ranges
-                  </span>
-                </div>
-                {categories.map((cat) => (
-                  <button
-                    key={cat.id}
-                    onClick={() => {
-                      setIsProductsHovered(false);
-                      if (onSelectCategory) {
-                        onSelectCategory(cat.id);
-                      } else {
+            {/* Desktop Products Dropdown Menu with Butter-Smooth Entrance/Exit */}
+            <AnimatePresence>
+              {isProductsHovered && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                  transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                  style={{
+                    willChange: 'transform, opacity',
+                    transform: 'translate3d(0, 0, 0)',
+                  }}
+                  className="absolute top-full left-0 mt-1 w-64 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2.5 z-50 overflow-hidden"
+                >
+                  <div className="px-3 pb-2 mb-1.5 border-b border-slate-100 flex items-center justify-between">
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                      Product Categories
+                    </span>
+                    <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                      {categories.length} Ranges
+                    </span>
+                  </div>
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => {
+                        setIsProductsHovered(false);
+                        if (onSelectCategory) {
+                          onSelectCategory(cat.id);
+                        } else {
+                          onSelectTab?.('PRODUCTS');
+                        }
+                      }}
+                      className="w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center justify-between group/item transition-colors"
+                    >
+                      <div>
+                        <p className="text-xs font-bold text-slate-800 group-hover/item:text-[#E0183D] transition-colors">
+                          {cat.title}
+                        </p>
+                        <p className="text-[10px] text-slate-500 font-medium line-clamp-1">
+                          {cat.subtitle || 'Switches & controls'}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                  <div className="pt-2 mt-1 border-t border-slate-100 px-3">
+                    <button
+                      onClick={() => {
+                        setIsProductsHovered(false);
                         onSelectTab?.('PRODUCTS');
-                      }
-                    }}
-                    className="w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center justify-between group/item transition"
-                  >
-                    <div>
-                      <p className="text-xs font-bold text-slate-800 group-hover/item:text-[#E0183D] transition-colors">
-                        {cat.title}
-                      </p>
-                      <p className="text-[10px] text-slate-500 font-medium line-clamp-1">
-                        {cat.subtitle || 'Switches & controls'}
-                      </p>
-                    </div>
-                  </button>
-                ))}
-                <div className="pt-2 mt-1 border-t border-slate-100 px-3">
-                  <button
-                    onClick={() => {
-                      setIsProductsHovered(false);
-                      onSelectTab?.('PRODUCTS');
-                    }}
-                    className="w-full text-center py-1.5 rounded-lg bg-slate-900 hover:bg-[#E0183D] text-white text-[11px] font-bold transition shadow-sm"
-                  >
-                    View All Products ({categories.length}+ Ranges)
-                  </button>
-                </div>
-              </div>
-            )}
+                      }}
+                      className="w-full text-center py-1.5 rounded-lg bg-slate-900 hover:bg-[#E0183D] active:scale-98 text-white text-[11px] font-bold transition-all shadow-sm"
+                    >
+                      View All Products ({categories.length}+ Ranges)
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Contact Tab */}
           <button
             onClick={() => onSelectTab?.('CONTACT')}
-            className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-all ${
+            className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-colors ${
               activeTab === 'CONTACT' ? themeStyles.navLinkActive : themeStyles.navLink
             }`}
           >
-            <span>Contact</span>
+            <span className="relative z-10">Contact</span>
             {activeTab === 'CONTACT' && (
-              <span className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[#E0183D] rounded-full shadow-[0_-1px_6px_rgba(224,24,61,0.6)]" />
+              <motion.span
+                layoutId="headerNavIndicator"
+                className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[#E0183D] rounded-full shadow-[0_-1px_6px_rgba(224,24,61,0.6)]"
+                transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                style={{ willChange: 'transform' }}
+              />
             )}
           </button>
 
           {/* Why Choose Us Tab */}
           <button
             onClick={() => onSelectTab?.('WHY_US')}
-            className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-all ${
+            className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-colors ${
               activeTab === 'WHY_US' ? themeStyles.navLinkActive : themeStyles.navLink
             }`}
           >
-            <span>Why Choose Us</span>
+            <span className="relative z-10">Why Choose Us</span>
             {activeTab === 'WHY_US' && (
-              <span className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[#E0183D] rounded-full shadow-[0_-1px_6px_rgba(224,24,61,0.6)]" />
+              <motion.span
+                layoutId="headerNavIndicator"
+                className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[#E0183D] rounded-full shadow-[0_-1px_6px_rgba(224,24,61,0.6)]"
+                transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                style={{ willChange: 'transform' }}
+              />
             )}
           </button>
 
           {/* Catalogue Tab */}
           <button
             onClick={() => onSelectTab?.('CATALOGUE')}
-            className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-all ${
+            className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-colors ${
               activeTab === 'CATALOGUE' ? themeStyles.navLinkActive : themeStyles.navLink
             }`}
           >
-            <span>Catalogue</span>
+            <span className="relative z-10">Catalogue</span>
             {activeTab === 'CATALOGUE' && (
-              <span className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[#E0183D] rounded-full shadow-[0_-1px_6px_rgba(224,24,61,0.6)]" />
+              <motion.span
+                layoutId="headerNavIndicator"
+                className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[#E0183D] rounded-full shadow-[0_-1px_6px_rgba(224,24,61,0.6)]"
+                transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                style={{ willChange: 'transform' }}
+              />
             )}
           </button>
         </nav>

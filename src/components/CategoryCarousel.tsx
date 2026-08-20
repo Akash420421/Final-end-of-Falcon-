@@ -101,10 +101,14 @@ export const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
             <div
               key={cat.id}
               onClick={() => onSelectCategory(cat.id)}
-              style={isCustomBg ? { background: cat.bgColor } : undefined}
-              className={`group snap-start shrink-0 w-[82%] sm:w-[260px] lg:w-full rounded-2xl lg:rounded-2xl p-3 lg:p-3.5 cursor-pointer shadow-md transition-all duration-300 relative overflow-hidden flex flex-col justify-between border border-white/10 ${
+              className={`group snap-start shrink-0 w-[82%] sm:w-[260px] lg:w-full rounded-2xl lg:rounded-2xl p-3 lg:p-3.5 cursor-pointer shadow-md category-card-gpu relative overflow-hidden flex flex-col justify-between border border-white/10 ${
                 isSelected ? 'ring-2 ring-[#E0183D] ring-offset-2' : ''
-              } ${!isCustomBg ? (cat.bgColor || 'bg-gradient-to-br from-[#101124] to-[#1E203C]') : ''} text-white hover:shadow-xl lg:hover:-translate-y-1 active:scale-98`}
+              } ${!isCustomBg ? (cat.bgColor || 'bg-gradient-to-br from-[#101124] to-[#1E203C]') : ''} text-white hover:shadow-xl active:scale-98`}
+              style={{
+                ...(isCustomBg ? { background: cat.bgColor } : {}),
+                willChange: 'transform',
+                transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+              }}
             >
               {/* Top Right Floating Badge */}
               {cat.badge && (
@@ -114,7 +118,10 @@ export const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
               )}
 
               {/* Prominent Image Box */}
-              <div className="w-full h-36 sm:h-40 lg:h-44 xl:h-48 bg-white rounded-xl lg:rounded-xl p-2 sm:p-2.5 flex items-center justify-center relative overflow-hidden shadow-inner border border-white/20 transition-transform duration-300 group-hover:scale-[1.02]">
+              <div
+                className="w-full h-36 sm:h-40 lg:h-44 xl:h-48 bg-white rounded-xl lg:rounded-xl p-2 sm:p-2.5 flex items-center justify-center relative overflow-hidden shadow-inner border border-white/20 transition-transform duration-300 group-hover:scale-[1.02]"
+                style={{ willChange: 'transform', transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)' }}
+              >
                 <div className="w-full h-full flex items-center justify-center rounded-lg overflow-hidden bg-white">
                   <ProductVisual
                     type={cat.imageUrl || cat.image}
@@ -139,7 +146,10 @@ export const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
                 </div>
 
                 {/* Arrow Icon Box */}
-                <div className="w-7 h-7 sm:w-8 sm:h-8 lg:w-8 lg:h-8 rounded-lg bg-white/15 group-hover:bg-[#E0183D] text-white flex items-center justify-center shrink-0 border border-white/20 group-hover:border-[#E0183D] shadow-sm transition-all duration-300 group-hover:translate-x-0.5">
+                <div
+                  className="w-7 h-7 sm:w-8 sm:h-8 lg:w-8 lg:h-8 rounded-lg bg-white/15 group-hover:bg-[#E0183D] text-white flex items-center justify-center shrink-0 border border-white/20 group-hover:border-[#E0183D] shadow-sm transition-all duration-300 group-hover:translate-x-0.5"
+                  style={{ willChange: 'transform', transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)' }}
+                >
                   <ArrowRight className="w-3.5 h-3.5 lg:w-4 lg:h-4 stroke-[2.5]" />
                 </div>
               </div>
