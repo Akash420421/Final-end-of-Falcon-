@@ -98,29 +98,29 @@ export async function fetchSupabaseStoreSettings(): Promise<{
   catalogueSettings?: CatalogueSettings;
   adminAuth?: AdminCredentials;
 } | null> {
-  try {
-    const { data, error } = await supabase
-      .from('store_settings')
-      .select('*')
-      .eq('id', 'company_branding')
-      .maybeSingle();
+  const { data, error } = await supabase
+    .from('store_settings')
+    .select('*')
+    .eq('id', 'company_branding')
+    .maybeSingle();
 
-    if (error || !data) {
-      return null;
-    }
+  if (error) {
+    console.error('[SupabaseService] fetchStoreSettings error:', error);
+    throw error;
+  }
 
-    return {
-      companyDetails: data.company_details || data.companyDetails,
-      heroContent: data.hero_content || data.heroContent,
-      logoImageUrl: data.logo_image_url || data.logoImageUrl,
-      whyChooseUs: data.why_choose_us || data.whyChooseUs,
-      catalogueSettings: data.catalogue_settings || data.catalogueSettings,
-      adminAuth: data.admin_auth || data.adminAuth,
-    };
-  } catch (err) {
-    console.warn('[SupabaseService] fetchStoreSettings error:', err);
+  if (!data) {
     return null;
   }
+
+  return {
+    companyDetails: data.company_details || data.companyDetails,
+    heroContent: data.hero_content || data.heroContent,
+    logoImageUrl: data.logo_image_url || data.logoImageUrl,
+    whyChooseUs: data.why_choose_us || data.whyChooseUs,
+    catalogueSettings: data.catalogue_settings || data.catalogueSettings,
+    adminAuth: data.admin_auth || data.adminAuth,
+  };
 }
 
 /**
@@ -177,11 +177,12 @@ export async function fetchSupabaseCategories(): Promise<Category[]> {
     .select('*')
     .order('order_index', { ascending: true });
 
-  if (error || !data) {
-    return [];
+  if (error) {
+    console.error('[SupabaseService] fetchCategories error:', error);
+    throw error;
   }
 
-  return data.map(mapCategoryFromSupabase);
+  return (data || []).map(mapCategoryFromSupabase);
 }
 
 /**
@@ -241,11 +242,12 @@ export async function fetchSupabaseProducts(): Promise<Product[]> {
     .select('*')
     .order('created_at', { ascending: false });
 
-  if (error || !data) {
-    return [];
+  if (error) {
+    console.error('[SupabaseService] fetchProducts error:', error);
+    throw error;
   }
 
-  return data.map(mapProductFromSupabase);
+  return (data || []).map(mapProductFromSupabase);
 }
 
 /**
@@ -310,11 +312,12 @@ export async function fetchSupabaseQuotes(): Promise<QuoteRequest[]> {
     .select('*')
     .order('created_at', { ascending: false });
 
-  if (error || !data) {
-    return [];
+  if (error) {
+    console.error('[SupabaseService] fetchQuotes error:', error);
+    throw error;
   }
 
-  return data.map(mapQuoteFromSupabase);
+  return (data || []).map(mapQuoteFromSupabase);
 }
 
 /**
@@ -383,11 +386,12 @@ export async function fetchSupabaseCataloguePages(): Promise<CataloguePage[]> {
     .select('*')
     .order('page_number', { ascending: true });
 
-  if (error || !data) {
-    return [];
+  if (error) {
+    console.error('[SupabaseService] fetchCataloguePages error:', error);
+    throw error;
   }
 
-  return data.map(mapCataloguePageFromSupabase);
+  return (data || []).map(mapCataloguePageFromSupabase);
 }
 
 /**

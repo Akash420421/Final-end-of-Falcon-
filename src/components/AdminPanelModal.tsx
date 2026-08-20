@@ -309,6 +309,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
               setEditingCategory(cat);
               setIsCategoryModalOpen(true);
             }}
+            onUpdateCategory={updateCategory}
             onDeleteCategory={deleteCategory}
             onMoveCategory={handleMoveCategory}
             onShowToast={showToast}

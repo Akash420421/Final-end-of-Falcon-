@@ -117,21 +117,35 @@ export const CategoryProductsView: React.FC<CategoryProductsViewProps> = ({
       </div>
 
       {/* Selected Category Header Banner */}
-      {currentCategory && (
-        <div className={`rounded-2xl lg:rounded-3xl p-4 lg:p-8 text-white shadow-md relative overflow-hidden ${currentCategory.bgColor}`}>
-          <div className="flex items-center justify-between mb-2 lg:mb-4">
-            <button
-              onClick={() => onSelectCategory(null)}
-              className="inline-flex items-center gap-1 text-[10px] lg:text-[12px] font-bold bg-white/20 hover:bg-white/30 backdrop-blur-md px-2.5 lg:px-3.5 py-1 lg:py-1.5 rounded-lg lg:rounded-xl transition"
-            >
-              <ArrowLeft className="w-3 h-3 lg:w-4 lg:h-4" />
-              <span>All Categories</span>
-            </button>
+      {currentCategory && (() => {
+        const isCustomCatBg =
+          currentCategory.bgColor &&
+          (currentCategory.bgColor.startsWith('#') ||
+            currentCategory.bgColor.startsWith('rgb') ||
+            currentCategory.bgColor.startsWith('hsl') ||
+            currentCategory.bgColor.startsWith('linear-gradient') ||
+            currentCategory.bgColor.startsWith('radial-gradient'));
 
-            <span className="text-[9px] lg:text-[11px] font-extrabold bg-white/20 uppercase tracking-wider px-2 lg:px-3 py-0.5 lg:py-1 rounded-md lg:rounded-lg backdrop-blur-sm">
-              {currentCategory.badge}
-            </span>
-          </div>
+        return (
+          <div
+            style={isCustomCatBg ? { background: currentCategory.bgColor } : undefined}
+            className={`rounded-2xl lg:rounded-3xl p-4 lg:p-8 text-white shadow-md relative overflow-hidden ${
+              !isCustomCatBg ? currentCategory.bgColor : ''
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2 lg:mb-4">
+              <button
+                onClick={() => onSelectCategory(null)}
+                className="inline-flex items-center gap-1 text-[10px] lg:text-[12px] font-bold bg-white/20 hover:bg-white/30 backdrop-blur-md px-2.5 lg:px-3.5 py-1 lg:py-1.5 rounded-lg lg:rounded-xl transition"
+              >
+                <ArrowLeft className="w-3 h-3 lg:w-4 lg:h-4" />
+                <span>All Categories</span>
+              </button>
+
+              <span className="text-[9px] lg:text-[11px] font-extrabold bg-white/20 uppercase tracking-wider px-2 lg:px-3 py-0.5 lg:py-1 rounded-md lg:rounded-lg backdrop-blur-sm">
+                {currentCategory.badge}
+              </span>
+            </div>
 
           <div className="flex items-start gap-3 lg:gap-5 mt-1">
             <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-white/95 rounded-xl lg:rounded-2xl p-1.5 sm:p-2.5 backdrop-blur-sm border border-white/40 shadow-sm shrink-0 flex items-center justify-center overflow-hidden">
@@ -193,7 +207,8 @@ export const CategoryProductsView: React.FC<CategoryProductsViewProps> = ({
             </div>
           )}
         </div>
-      )}
+        );
+      })()}
 
       {/* Product List Title & Count */}
       <div className="flex items-center justify-between pt-1">

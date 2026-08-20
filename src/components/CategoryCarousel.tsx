@@ -73,29 +73,49 @@ export const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
         onMouseLeave={() => setIsPaused(false)}
         onTouchStart={() => setIsPaused(true)}
         onTouchEnd={() => setIsPaused(false)}
-        className="flex lg:grid lg:grid-cols-2 xl:grid-cols-4 gap-3.5 lg:gap-6 overflow-x-auto lg:overflow-visible no-scrollbar snap-x lg:snap-none snap-mandatory pt-1 pb-3 smooth-scroll"
+        className={`flex lg:grid ${
+          categories.length === 1
+            ? 'lg:grid-cols-1 max-w-sm mx-auto'
+            : categories.length === 2
+            ? 'lg:grid-cols-2 max-w-2xl mx-auto'
+            : categories.length === 3
+            ? 'lg:grid-cols-3 max-w-4xl mx-auto'
+            : categories.length === 4
+            ? 'lg:grid-cols-4'
+            : categories.length === 5
+            ? 'md:grid-cols-3 lg:grid-cols-5'
+            : 'md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6'
+        } gap-3 sm:gap-4 lg:gap-4 xl:gap-5 overflow-x-auto lg:overflow-visible no-scrollbar snap-x lg:snap-none snap-mandatory pt-1 pb-3 smooth-scroll`}
       >
         {categories.map((cat) => {
           const isSelected = selectedCategory === cat.id;
+          const isCustomBg =
+            cat.bgColor &&
+            (cat.bgColor.startsWith('#') ||
+              cat.bgColor.startsWith('rgb') ||
+              cat.bgColor.startsWith('hsl') ||
+              cat.bgColor.startsWith('linear-gradient') ||
+              cat.bgColor.startsWith('radial-gradient'));
 
           return (
             <div
               key={cat.id}
               onClick={() => onSelectCategory(cat.id)}
-              className={`group snap-start shrink-0 w-[82%] sm:w-[260px] lg:w-full rounded-2xl lg:rounded-3xl p-3 lg:p-4 cursor-pointer shadow-md transition-all duration-300 relative overflow-hidden flex flex-col justify-between border ${
+              style={isCustomBg ? { background: cat.bgColor } : undefined}
+              className={`group snap-start shrink-0 w-[82%] sm:w-[260px] lg:w-full rounded-2xl lg:rounded-2xl p-3 lg:p-3.5 cursor-pointer shadow-md transition-all duration-300 relative overflow-hidden flex flex-col justify-between border border-white/10 ${
                 isSelected ? 'ring-2 ring-[#E0183D] ring-offset-2' : ''
-              } ${cat.bgColor || 'bg-gradient-to-br from-[#101124] to-[#1E203C]'} text-white hover:shadow-xl lg:hover:-translate-y-1.5 active:scale-98`}
+              } ${!isCustomBg ? (cat.bgColor || 'bg-gradient-to-br from-[#101124] to-[#1E203C]') : ''} text-white hover:shadow-xl lg:hover:-translate-y-1 active:scale-98`}
             >
-              {/* Top Right Floating Badge / Icon if present */}
+              {/* Top Right Floating Badge */}
               {cat.badge && (
-                <div className="absolute top-4 right-4 z-10 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full text-[9px] lg:text-[10px] font-extrabold uppercase tracking-wider text-white border border-white/20 shadow-sm">
+                <div className="absolute top-3.5 right-3.5 z-10 bg-black/50 backdrop-blur-md px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider text-white border border-white/20 shadow-sm">
                   {cat.badge}
                 </div>
               )}
 
-              {/* Big Prominent Image Box (Auto-fits uploaded custom category image up to card borders) */}
-              <div className="w-full h-44 sm:h-48 lg:h-56 bg-white/95 rounded-xl lg:rounded-2xl p-1.5 sm:p-2 flex items-center justify-center relative overflow-hidden shadow-inner border border-white/20 transition-transform duration-300 group-hover:scale-[1.02]">
-                <div className="w-full h-full flex items-center justify-center rounded-lg lg:rounded-xl overflow-hidden bg-white">
+              {/* Prominent Image Box */}
+              <div className="w-full h-36 sm:h-40 lg:h-44 xl:h-48 bg-white rounded-xl lg:rounded-xl p-2 sm:p-2.5 flex items-center justify-center relative overflow-hidden shadow-inner border border-white/20 transition-transform duration-300 group-hover:scale-[1.02]">
+                <div className="w-full h-full flex items-center justify-center rounded-lg overflow-hidden bg-white">
                   <ProductVisual
                     type={cat.imageUrl || cat.image}
                     size="category"
@@ -106,9 +126,9 @@ export const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
               </div>
 
               {/* Bottom Info Bar: Category Title & Right Arrow */}
-              <div className="mt-3 lg:mt-4 pt-1 flex items-center justify-between gap-2">
-                <div className="flex-1 min-w-0 pr-2">
-                  <h3 className="text-[14px] sm:text-[15px] lg:text-[16px] xl:text-[17px] font-black text-white leading-tight line-clamp-2 tracking-tight group-hover:text-red-300 transition-colors">
+              <div className="mt-3 pt-1 flex items-center justify-between gap-2">
+                <div className="flex-1 min-w-0 pr-1">
+                  <h3 className="text-[13px] sm:text-[14px] lg:text-[14px] xl:text-[15px] font-bold text-white leading-tight line-clamp-2 tracking-tight">
                     {cat.title}
                   </h3>
                   {cat.subtitle && (
@@ -119,8 +139,8 @@ export const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
                 </div>
 
                 {/* Arrow Icon Box */}
-                <div className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 rounded-xl bg-white/15 group-hover:bg-[#E0183D] text-white flex items-center justify-center shrink-0 border border-white/20 group-hover:border-[#E0183D] shadow-sm transition-all duration-300 group-hover:translate-x-0.5">
-                  <ArrowRight className="w-4 h-4 lg:w-5 lg:h-5 stroke-[2.5]" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 lg:w-8 lg:h-8 rounded-lg bg-white/15 group-hover:bg-[#E0183D] text-white flex items-center justify-center shrink-0 border border-white/20 group-hover:border-[#E0183D] shadow-sm transition-all duration-300 group-hover:translate-x-0.5">
+                  <ArrowRight className="w-3.5 h-3.5 lg:w-4 lg:h-4 stroke-[2.5]" />
                 </div>
               </div>
             </div>

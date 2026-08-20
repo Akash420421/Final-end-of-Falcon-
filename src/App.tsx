@@ -40,7 +40,20 @@ function MainContent() {
   const location = useLocation();
   const params = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { isLoading, products, categories, companyDetails, isAdminLoggedIn, firebaseError, retryFirebaseConnection } = useFalconStore();
+  const {
+    isLoading,
+    initialSyncStatus,
+    initialSyncError,
+    hasOfflineCache,
+    proceedWithOfflineCache,
+    retrySupabaseConnection,
+    products,
+    categories,
+    companyDetails,
+    isAdminLoggedIn,
+    firebaseError,
+    retryFirebaseConnection,
+  } = useFalconStore();
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -179,9 +192,21 @@ function MainContent() {
     setIsPhoneModalOpen(true);
   };
 
-  // Full Page Skeleton Loader while Firestore data is fetching
-  if (isLoading) {
+  // Full Page Skeleton Loader while critical database data is fetching
+  if (initialSyncStatus === 'loading' || isLoading) {
     return <FullPageSkeletonLoader />;
+  }
+
+  // Coordinated Error Screen with retry and cache fallback if initial sync failed
+  if (initialSyncStatus === 'error') {
+    return (
+      <FullPageSkeletonLoader
+        error={initialSyncError}
+        onRetry={retrySupabaseConnection}
+        onUseOfflineCache={proceedWithOfflineCache}
+        hasCachedData={hasOfflineCache}
+      />
+    );
   }
 
   // Standalone Admin Panel Route — requires authentication
