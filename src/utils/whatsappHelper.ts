@@ -74,10 +74,12 @@ export function getProductWhatsAppUrl(
 
 /**
  * Universal WhatsApp launcher that works seamlessly for:
- * 1. WhatsApp Business (w4b)
+ * 1. WhatsApp Business
  * 2. Normal WhatsApp
  * 3. Mobile devices (Android / iOS)
  * 4. Desktop WhatsApp Web
+ * 
+ * Never redirects the browser page to a download page.
  */
 export function openWhatsAppChat(
   phone: string | undefined,
@@ -91,7 +93,7 @@ export function openWhatsAppChat(
 
   const encodedText = encodeURIComponent(messageText);
 
-  // Detect mobile user agent
+  // Detect mobile user agent (Android / iOS / Tablets)
   const isMobile =
     typeof navigator !== 'undefined' &&
     /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -99,44 +101,13 @@ export function openWhatsAppChat(
     );
 
   if (isMobile) {
-    // Direct native intent URL: WhatsApp and WhatsApp Business both handle `whatsapp://`
-    // This allows Android/iOS to open WhatsApp Business or normal WhatsApp directly
-    // and prompts user with an app picker if both are installed, WITHOUT forcing Play Store redirect.
-    const nativeUri = `whatsapp://send?phone=${cleanPhone}&text=${encodedText}`;
-
-    // Create an invisible anchor tag to trigger the protocol handler cleanly
-    const link = document.createElement('a');
-    link.href = nativeUri;
-    link.target = '_top';
-    link.rel = 'noopener noreferrer';
-    document.body.appendChild(link);
-    link.click();
-
-    setTimeout(() => {
-      if (document.body.contains(link)) {
-        document.body.removeChild(link);
-      }
-    }, 500);
-
-    // Fallback: If neither app responds within 1.5s, fallback to web API
-    const fallbackTimer = setTimeout(() => {
-      window.location.href = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
-    }, 1500);
-
-    const onVisibilityChange = () => {
-      if (document.hidden) {
-        clearTimeout(fallbackTimer);
-        document.removeEventListener('visibilitychange', onVisibilityChange);
-      }
-    };
-    document.addEventListener('visibilitychange', onVisibilityChange);
+    // Direct native intent: triggers Android/iOS app picker for WhatsApp / WhatsApp Business directly.
+    // Does NOT navigate the browser tab away or load any WhatsApp download page.
+    window.location.href = `whatsapp://send?phone=${cleanPhone}&text=${encodedText}`;
   } else {
-    // Desktop: Use web.whatsapp.com
+    // Desktop: Open WhatsApp Web in a clean new tab
     const desktopUrl = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
-    const newWindow = window.open(desktopUrl, '_blank', 'noopener,noreferrer');
-    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-      window.location.href = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
-    }
+    window.open(desktopUrl, '_blank', 'noopener,noreferrer');
   }
 }
 

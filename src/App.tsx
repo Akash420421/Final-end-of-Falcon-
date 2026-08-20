@@ -33,7 +33,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { CatalogueView } from './components/CatalogueView';
 import { SEOHead } from './components/SEOHead';
 import { shareProductOnWhatsApp, openWhatsAppChat } from './utils/whatsappHelper';
-import { Phone, Check, X } from 'lucide-react';
+import { Phone, X } from 'lucide-react';
 
 function MainContent() {
   const navigate = useNavigate();
@@ -49,16 +49,6 @@ function MainContent() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
-
-  // Toast notification state
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 3000);
-  };
 
   // Derive active tab from path
   const activeTab: NavigationTab = useMemo(() => {
@@ -165,7 +155,6 @@ function MainContent() {
     
     if (productOrName && typeof productOrName === 'object') {
       shareProductOnWhatsApp(productOrName, companyDetails);
-      showToast(`Opening WhatsApp for ${productOrName.name}...`);
       return;
     }
 
@@ -175,7 +164,6 @@ function MainContent() {
       );
       if (foundProduct) {
         shareProductOnWhatsApp(foundProduct, companyDetails);
-        showToast(`Opening WhatsApp for ${foundProduct.name}...`);
         return;
       }
     }
@@ -184,7 +172,6 @@ function MainContent() {
     const brand = companyDetails?.brandName || 'Falcon Electrics';
     const messageText = `Hello ${company} (${brand}), I am interested in your electrical products. Please share your latest catalogue and wholesale price list.`;
     openWhatsAppChat(rawPhone, messageText);
-    showToast(`Opening WhatsApp (${rawPhone})...`);
   };
 
   // Phone Call Handler
@@ -242,10 +229,8 @@ function MainContent() {
           onAdminTrigger={() => {
             if (isAdminLoggedIn) {
               navigate('/admin');
-              showToast('Opening Admin Control Panel...');
             } else {
               setIsAdminLoginOpen(true);
-              showToast('10-Click Trigger Activated! Enter Admin Login');
             }
           }}
           activeTab={activeTab}
@@ -473,14 +458,6 @@ function MainContent() {
             </a>
             <span className="text-[10px] text-slate-400">Available Mon-Sat: {companyDetails?.businessHours || '10:00 AM - 7:00 PM'}</span>
           </div>
-        </div>
-      )}
-
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[#101124] text-white text-[12px] font-bold px-4 py-2.5 rounded-xl shadow-xl border border-white/20 flex items-center gap-2 animate-fade-in">
-          <Check className="w-4 h-4 text-[#25D366]" />
-          <span>{toastMessage}</span>
         </div>
       )}
     </div>
