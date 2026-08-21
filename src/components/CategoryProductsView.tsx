@@ -32,21 +32,10 @@ export const CategoryProductsView: React.FC<CategoryProductsViewProps> = ({
   const currentCategory = categories.find((c) => c.id === selectedCategoryId);
   const [selectedSubCat, setSelectedSubCat] = React.useState<string | null>(null);
 
-  // Progressive infinite chunk rendering (starts with 8 products, loads 6 more on scroll)
-  const INITIAL_COUNT = 8;
-  const CHUNK_SIZE = 6;
-  const [visibleCount, setVisibleCount] = React.useState<number>(INITIAL_COUNT);
-  const loadMoreRef = React.useRef<HTMLDivElement | null>(null);
-
-  // Reset sub-category filter and visible count when category or search changes
+  // Reset sub-category filter when category changes
   React.useEffect(() => {
     setSelectedSubCat(null);
-    setVisibleCount(INITIAL_COUNT);
-  }, [selectedCategoryId, searchQuery]);
-
-  React.useEffect(() => {
-    setVisibleCount(INITIAL_COUNT);
-  }, [selectedSubCat]);
+  }, [selectedCategoryId]);
 
   const getCategoryIcon = (iconName: string) => {
     switch (iconName) {
@@ -68,35 +57,6 @@ export const CategoryProductsView: React.FC<CategoryProductsViewProps> = ({
     if (!selectedSubCat) return true;
     return p.subCategory?.trim().toLowerCase() === selectedSubCat.trim().toLowerCase();
   });
-
-  // Visible sliced products for fast rendering
-  const visibleProducts = filteredProducts.slice(0, visibleCount);
-  const hasMoreProducts = visibleCount < filteredProducts.length;
-
-  // IntersectionObserver to auto-load next chunk seamlessly on scroll
-  React.useEffect(() => {
-    if (!hasMoreProducts) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setVisibleCount((prev) => Math.min(prev + CHUNK_SIZE, filteredProducts.length));
-        }
-      },
-      { threshold: 0.1, rootMargin: '250px' }
-    );
-
-    const currentSentinel = loadMoreRef.current;
-    if (currentSentinel) {
-      observer.observe(currentSentinel);
-    }
-
-    return () => {
-      if (currentSentinel) {
-        observer.unobserve(currentSentinel);
-      }
-    };
-  }, [hasMoreProducts, filteredProducts.length]);
 
   return (
     <div className="py-4 lg:py-10 px-4 lg:px-8 max-w-md lg:max-w-7xl mx-auto space-y-4 lg:space-y-8">
@@ -349,106 +309,92 @@ export const CategoryProductsView: React.FC<CategoryProductsViewProps> = ({
           </button>
         </div>
       ) : (
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-6">
-            {visibleProducts.map((product) => (
-              <div
-                key={product.id}
-                onClick={() => onSelectProduct(product)}
-                className="bg-white rounded-2xl lg:rounded-3xl p-3 lg:p-5 border border-slate-200/90 shadow-sm hover:shadow-xl lg:hover:-translate-y-1.5 transition-all duration-200 cursor-pointer flex flex-col justify-between group active:scale-98 relative"
-              >
-                {/* Top Badge */}
-                {product.badge && (
-                  <div className="absolute top-2 left-2 lg:top-3.5 lg:left-3.5 z-10">
-                    <span className="text-[8px] lg:text-[10px] font-extrabold bg-[#101124] text-white px-2 py-0.5 lg:px-2.5 lg:py-1 rounded-md uppercase tracking-wider">
-                      {product.badge}
-                    </span>
-                  </div>
-                )}
-
-                {/* Rating */}
-                {product.rating && (
-                  <div className="absolute top-2 right-2 lg:top-3.5 lg:right-3.5 z-10 flex items-center gap-0.5 bg-yellow-50 px-1.5 py-0.5 lg:px-2 lg:py-1 rounded border border-yellow-200">
-                    <Star className="w-2.5 h-2.5 lg:w-3 lg:h-3 text-yellow-500 fill-yellow-500" />
-                    <span className="text-[9px] lg:text-[11px] font-bold text-slate-700">{product.rating}</span>
-                  </div>
-                )}
-
-                {/* Product Visual */}
-                <div className="bg-slate-100 rounded-xl lg:rounded-2xl mb-2.5 lg:mb-3 h-36 sm:h-40 lg:h-48 flex items-center justify-center border border-slate-200/80 group-hover:scale-[1.03] transition duration-200 mt-4 overflow-hidden relative">
-                  <ProductVisual
-                    type={
-                      product.images && product.images.length > 0
-                        ? product.images[0]
-                        : product.image || 'fan-regulator-5step'
-                    }
-                    size="card"
-                    className="w-full h-full"
-                  />
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-6">
+          {filteredProducts.map((product) => (
+            <div
+              key={product.id}
+              onClick={() => onSelectProduct(product)}
+              className="bg-white rounded-2xl lg:rounded-3xl p-3 lg:p-5 border border-slate-200/90 shadow-sm hover:shadow-xl lg:hover:-translate-y-1.5 transition-all duration-200 cursor-pointer flex flex-col justify-between group active:scale-98 relative"
+            >
+              {/* Top Badge */}
+              {product.badge && (
+                <div className="absolute top-2 left-2 lg:top-3.5 lg:left-3.5 z-10">
+                  <span className="text-[8px] lg:text-[10px] font-extrabold bg-[#101124] text-white px-2 py-0.5 lg:px-2.5 lg:py-1 rounded-md uppercase tracking-wider">
+                    {product.badge}
+                  </span>
                 </div>
+              )}
 
-                {/* Category Tag */}
-                <span className="text-[9px] lg:text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
-                  {product.amps || product.categoryName}
-                </span>
+              {/* Rating */}
+              {product.rating && (
+                <div className="absolute top-2 right-2 lg:top-3.5 lg:right-3.5 z-10 flex items-center gap-0.5 bg-yellow-50 px-1.5 py-0.5 lg:px-2 lg:py-1 rounded border border-yellow-200">
+                  <Star className="w-2.5 h-2.5 lg:w-3 lg:h-3 text-yellow-500 fill-yellow-500" />
+                  <span className="text-[9px] lg:text-[11px] font-bold text-slate-700">{product.rating}</span>
+                </div>
+              )}
 
-                {/* Product Name */}
-                <h3 className="text-[12px] lg:text-[15px] font-bold text-[#171827] leading-snug line-clamp-2 my-1 lg:my-2">
-                  {product.name}
-                </h3>
+              {/* Product Visual */}
+              <div className="bg-slate-100 rounded-xl lg:rounded-2xl mb-2.5 lg:mb-3 h-36 sm:h-40 lg:h-48 flex items-center justify-center border border-slate-200/80 group-hover:scale-[1.03] transition duration-200 mt-4 overflow-hidden relative">
+                <ProductVisual
+                  type={
+                    product.images && product.images.length > 0
+                      ? product.images[0]
+                      : product.image || 'fan-regulator-5step'
+                  }
+                  size="card"
+                  className="w-full h-full"
+                />
+              </div>
 
-                {/* Price & Action Buttons */}
-                <div className="mt-2 lg:mt-3 pt-2 lg:pt-3 border-t border-slate-100 space-y-1.5 lg:space-y-2">
-                  <div className="flex items-center justify-between gap-1">
-                    <div>
-                      <span className="text-[13px] lg:text-[16px] font-extrabold text-[#E0183D] block">
-                        {product.price || 'Quote'}
+              {/* Category Tag */}
+              <span className="text-[9px] lg:text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+                {product.amps || product.categoryName}
+              </span>
+
+              {/* Product Name */}
+              <h3 className="text-[12px] lg:text-[15px] font-bold text-[#171827] leading-snug line-clamp-2 my-1 lg:my-2">
+                {product.name}
+              </h3>
+
+              {/* Price & Action Buttons */}
+              <div className="mt-2 lg:mt-3 pt-2 lg:pt-3 border-t border-slate-100 space-y-1.5 lg:space-y-2">
+                <div className="flex items-center justify-between gap-1">
+                  <div>
+                    <span className="text-[13px] lg:text-[16px] font-extrabold text-[#E0183D] block">
+                      {product.price || 'Quote'}
+                    </span>
+                    {product.perPiecePrice && (
+                      <span className="text-[9px] lg:text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 lg:px-1.5 py-0.5 rounded">
+                        ₹{product.perPiecePrice}/pc
                       </span>
-                      {product.perPiecePrice && (
-                        <span className="text-[9px] lg:text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 lg:px-1.5 py-0.5 rounded">
-                          ₹{product.perPiecePrice}/pc
-                        </span>
-                      )}
-                    </div>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectProduct(product);
-                      }}
-                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-1.5 lg:px-3 lg:py-1.5 rounded-lg lg:rounded-xl transition active:scale-90 flex items-center gap-1 text-[10px] lg:text-[12px] font-bold shrink-0"
-                    >
-                      <Eye className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
-                      <span>Specs</span>
-                    </button>
+                    )}
                   </div>
 
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      onOpenWhatsApp(product);
+                      onSelectProduct(product);
                     }}
-                    className="w-full bg-[#25D366] hover:bg-[#20ba5a] text-white font-bold text-[10px] lg:text-[12px] py-1.5 lg:py-2.5 rounded-lg lg:rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition active:scale-95 group"
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-1.5 lg:px-3 lg:py-1.5 rounded-lg lg:rounded-xl transition active:scale-90 flex items-center gap-1 text-[10px] lg:text-[12px] font-bold shrink-0"
                   >
-                    <FaWhatsapp size={13} className="lg:scale-110 group-hover:scale-125 transition-transform" />
-                    <span>WhatsApp Inquiry</span>
+                    <Eye className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
+                    <span>Specs</span>
                   </button>
                 </div>
-              </div>
-            ))}
-          </div>
 
-          {/* Sentinel for Infinite Scroll Chunk Loading */}
-          {hasMoreProducts && (
-            <div ref={loadMoreRef} className="pt-2 pb-6 flex flex-col items-center justify-center gap-2">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#E0183D] animate-bounce [animation-delay:-0.3s]"></span>
-                <span className="w-2 h-2 rounded-full bg-[#E0183D] animate-bounce [animation-delay:-0.15s]"></span>
-                <span className="w-2 h-2 rounded-full bg-[#E0183D] animate-bounce"></span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenWhatsApp(product);
+                  }}
+                  className="w-full bg-[#25D366] hover:bg-[#20ba5a] text-white font-bold text-[10px] lg:text-[12px] py-1.5 lg:py-2.5 rounded-lg lg:rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition active:scale-95 group"
+                >
+                  <FaWhatsapp size={13} className="lg:scale-110 group-hover:scale-125 transition-transform" />
+                  <span>WhatsApp Inquiry</span>
+                </button>
               </div>
-              <span className="text-[11px] font-medium text-slate-400">Loading more products...</span>
             </div>
-          )}
+          ))}
         </div>
       )}
     </div>
