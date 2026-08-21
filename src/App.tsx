@@ -326,13 +326,7 @@ function MainContent() {
           activeTab={activeTab}
           onSelectTab={handleSelectTab}
           onOpenProductsDropdown={() => {
-            if (location.pathname === '/') {
-              const el = document.getElementById('categories-section');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-              else navigate('/products');
-            } else {
-              navigate('/products');
-            }
+            handleSelectTab('PRODUCTS');
           }}
           onSelectCategory={(categoryId) => {
             handleSelectCategory(categoryId);
@@ -344,13 +338,7 @@ function MainContent() {
           activeTab={activeTab}
           onSelectTab={handleSelectTab}
           onOpenProductsDropdown={() => {
-            if (location.pathname === '/') {
-              const el = document.getElementById('categories-section');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-              else navigate('/products');
-            } else {
-              navigate('/products');
-            }
+            handleSelectTab('PRODUCTS');
           }}
         />
       </div>

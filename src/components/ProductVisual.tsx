@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Package } from 'lucide-react';
 
 interface ProductVisualProps {
   type: string;
@@ -13,6 +14,13 @@ export const ProductVisual: React.FC<ProductVisualProps> = ({
   className = '',
   objectFit,
 }) => {
+  const [imageState, setImageState] = useState<'loading' | 'loaded' | 'error'>('loading');
+
+  // Reset state when type/src changes
+  useEffect(() => {
+    setImageState('loading');
+  }, [type]);
+
   // Default fit: 'contain' for hero showcases, logos & small icons, 'cover' for product cards
   const effectiveFit = objectFit || (size === 'hero' || size === 'sm' ? 'contain' : 'cover');
 
@@ -47,11 +55,30 @@ export const ProductVisual: React.FC<ProductVisualProps> = ({
     const fitClass = effectiveFit === 'contain' ? 'object-contain' : effectiveFit === 'fill' ? 'object-fill' : 'object-cover';
     return (
       <div className={`relative flex items-center justify-center ${containerSize} ${className} overflow-hidden`}>
+        {/* Shimmer Placeholder while loading */}
+        {imageState === 'loading' && (
+          <div className="absolute inset-0 bg-slate-200 animate-pulse flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-slate-300/60 animate-ping opacity-30" />
+          </div>
+        )}
+
+        {/* Fallback if image failed to load */}
+        {imageState === 'error' && (
+          <div className="absolute inset-0 bg-slate-100 flex flex-col items-center justify-center text-slate-400 p-2">
+            <Package className="w-6 h-6 stroke-[1.5] mb-1 opacity-60" />
+            <span className="text-[9px] font-semibold">Falcon</span>
+          </div>
+        )}
+
         <img
           src={type}
           alt="Product or Category visual"
           loading="lazy"
-          className={`w-full h-full ${fitClass} transition-transform duration-300 select-none`}
+          onLoad={() => setImageState('loaded')}
+          onError={() => setImageState('error')}
+          className={`w-full h-full ${fitClass} select-none transition-all duration-300 ${
+            imageState === 'loaded' ? 'opacity-100 scale-100' : 'opacity-0 scale-98'
+          }`}
         />
       </div>
     );
