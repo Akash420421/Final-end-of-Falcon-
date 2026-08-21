@@ -122,49 +122,87 @@ function MainContent() {
 
   const selectedCategoryObj = categories.find((c) => c.id === selectedCategoryId);
 
-  // Navigation handlers
+  // Smart navigation handlers (Amazon/Flipkart style history de-duplication)
   const handleSelectTab = (tab: NavigationTab) => {
+    let targetPath = '/';
     switch (tab) {
       case 'HOME':
-        navigate('/');
+        targetPath = '/';
         break;
       case 'ABOUT':
-        navigate('/about');
+        targetPath = '/about';
         break;
       case 'PRODUCTS':
-        navigate('/products');
+        targetPath = '/products';
         break;
       case 'CATALOGUE':
-        navigate('/catalogue');
+        targetPath = '/catalogue';
         break;
       case 'WHY_US':
-        navigate('/why-us');
+        targetPath = '/why-us';
         break;
       case 'CONTACT':
-        navigate('/contact');
+        targetPath = '/contact';
         break;
     }
+
+    // 1. Exact match de-duplication: If already on target path, scroll top without adding history stack entry
+    if (location.pathname === targetPath) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // 2. Intra-section category/product reset when clicking main Products tab: use replace
+    if (
+      tab === 'PRODUCTS' &&
+      (location.pathname.startsWith('/category/') || location.pathname.startsWith('/product/'))
+    ) {
+      navigate('/products', { replace: true });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    navigate(targetPath);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSelectCategory = (catId: string | null) => {
-    if (catId) {
-      navigate(`/category/${catId}`);
+    const targetPath = catId ? `/category/${catId}` : '/products';
+
+    // 1. De-duplication: If clicking the category already active, don't create duplicate history item
+    if (location.pathname === targetPath) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // 2. Smart Category Filter: If already inside the Products screen/category list,
+    // replace current entry so switching multiple categories does not trap the user in back loops.
+    const isAlreadyInProducts =
+      location.pathname === '/products' ||
+      location.pathname.startsWith('/category/') ||
+      location.pathname.startsWith('/product/');
+
+    if (isAlreadyInProducts) {
+      navigate(targetPath, { replace: true });
     } else {
-      navigate('/products');
+      navigate(targetPath);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSelectProduct = (product: Product) => {
-    navigate(`/product/${product.id}`);
+    const targetPath = `/product/${product.id}`;
+    if (location.pathname === targetPath) return;
+    navigate(targetPath);
   };
 
   const handleCloseProductModal = () => {
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate('/products');
+    if (location.pathname.startsWith('/product/')) {
+      if (window.history.state && window.history.state.idx > 0) {
+        navigate(-1);
+      } else {
+        navigate('/products', { replace: true });
+      }
     }
   };
 
@@ -223,7 +261,13 @@ function MainContent() {
           <SEOHead />
           <AdminLoginModal
             isOpen={true}
-            onClose={() => navigate('/')}
+            onClose={() => {
+              if (window.history.state && window.history.state.idx > 0) {
+                navigate(-1);
+              } else {
+                navigate('/', { replace: true });
+              }
+            }}
             onSuccess={() => {
               // Successfully logged in — state update will immediately render AdminPanelModal
             }}
@@ -234,7 +278,13 @@ function MainContent() {
     return (
       <AdminPanelModal
         isOpen={isAdminPanelOpen}
-        onClose={() => navigate('/')}
+        onClose={() => {
+          if (window.history.state && window.history.state.idx > 0) {
+            navigate(-1);
+          } else {
+            navigate('/', { replace: true });
+          }
+        }}
       />
     );
   }
@@ -313,8 +363,12 @@ function MainContent() {
             <HeroSection
               onViewProducts={() => handleSelectCategory(null)}
               onViewCatalogue={() => {
-                navigate('/catalogue');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                if (location.pathname === '/catalogue') {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                  navigate('/catalogue');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
               }}
             />
 
@@ -324,8 +378,12 @@ function MainContent() {
               onSearchChange={(q) => setSearchQuery(q)}
               onSearchSubmit={(e) => {
                 e.preventDefault();
-                navigate('/products');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                if (location.pathname === '/products') {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                  navigate('/products');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
               }}
             />
 
@@ -454,8 +512,13 @@ function MainContent() {
           setIsMenuOpen(false);
         }}
         onOpenAdminPanel={() => {
-          navigate('/admin');
           setIsMenuOpen(false);
+          if (location.pathname === '/admin') return;
+          if (isAdminLoggedIn) {
+            navigate('/admin');
+          } else {
+            setIsAdminLoginOpen(true);
+          }
         }}
       />
 
