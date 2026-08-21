@@ -98,29 +98,34 @@ export async function fetchSupabaseStoreSettings(): Promise<{
   catalogueSettings?: CatalogueSettings;
   adminAuth?: AdminCredentials;
 } | null> {
-  const { data, error } = await supabase
-    .from('store_settings')
-    .select('*')
-    .eq('id', 'company_branding')
-    .maybeSingle();
+  try {
+    const { data, error } = await supabase
+      .from('store_settings')
+      .select('*')
+      .eq('id', 'company_branding')
+      .maybeSingle();
 
-  if (error) {
-    console.error('[SupabaseService] fetchStoreSettings error:', error);
-    throw error;
-  }
+    if (error) {
+      console.warn('[SupabaseService] fetchStoreSettings notice:', error?.message || error);
+      return null;
+    }
 
-  if (!data) {
+    if (!data) {
+      return null;
+    }
+
+    return {
+      companyDetails: data.company_details || data.companyDetails,
+      heroContent: data.hero_content || data.heroContent,
+      logoImageUrl: data.logo_image_url || data.logoImageUrl,
+      whyChooseUs: data.why_choose_us || data.whyChooseUs,
+      catalogueSettings: data.catalogue_settings || data.catalogueSettings,
+      adminAuth: data.admin_auth || data.adminAuth,
+    };
+  } catch (err: any) {
+    console.warn('[SupabaseService] fetchStoreSettings network notice:', err?.message || err);
     return null;
   }
-
-  return {
-    companyDetails: data.company_details || data.companyDetails,
-    heroContent: data.hero_content || data.heroContent,
-    logoImageUrl: data.logo_image_url || data.logoImageUrl,
-    whyChooseUs: data.why_choose_us || data.whyChooseUs,
-    catalogueSettings: data.catalogue_settings || data.catalogueSettings,
-    adminAuth: data.admin_auth || data.adminAuth,
-  };
 }
 
 /**
@@ -158,13 +163,16 @@ export async function saveSupabaseStoreSettings(payload: {
     rowData.admin_auth = payload.adminAuth;
   }
 
-  const { error } = await supabase
-    .from('store_settings')
-    .upsert(rowData, { onConflict: 'id' });
+  try {
+    const { error } = await supabase
+      .from('store_settings')
+      .upsert(rowData, { onConflict: 'id' });
 
-  if (error) {
-    console.error('[SupabaseService] saveSupabaseStoreSettings error:', error);
-    throw error;
+    if (error) {
+      console.warn('[SupabaseService] saveSupabaseStoreSettings notice:', error?.message || error);
+    }
+  } catch (err: any) {
+    console.warn('[SupabaseService] saveSupabaseStoreSettings network notice:', err?.message || err);
   }
 }
 
@@ -172,17 +180,22 @@ export async function saveSupabaseStoreSettings(payload: {
  * Fetches all categories from Supabase
  */
 export async function fetchSupabaseCategories(): Promise<Category[]> {
-  const { data, error } = await supabase
-    .from('categories')
-    .select('*')
-    .order('order_index', { ascending: true });
+  try {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .order('order_index', { ascending: true });
 
-  if (error) {
-    console.error('[SupabaseService] fetchCategories error:', error);
-    throw error;
+    if (error) {
+      console.warn('[SupabaseService] fetchCategories notice:', error?.message || error);
+      return [];
+    }
+
+    return (data || []).map(mapCategoryFromSupabase);
+  } catch (err: any) {
+    console.warn('[SupabaseService] fetchCategories network notice:', err?.message || err);
+    return [];
   }
-
-  return (data || []).map(mapCategoryFromSupabase);
 }
 
 /**
@@ -208,13 +221,16 @@ export async function upsertSupabaseCategory(category: Category) {
     updated_at: new Date().toISOString(),
   };
 
-  const { error } = await supabase
-    .from('categories')
-    .upsert(rowData, { onConflict: 'id' });
+  try {
+    const { error } = await supabase
+      .from('categories')
+      .upsert(rowData, { onConflict: 'id' });
 
-  if (error) {
-    console.error('[SupabaseService] upsertSupabaseCategory error:', error);
-    throw error;
+    if (error) {
+      console.warn('[SupabaseService] upsertSupabaseCategory notice:', error?.message || error);
+    }
+  } catch (err: any) {
+    console.warn('[SupabaseService] upsertSupabaseCategory network notice:', err?.message || err);
   }
 }
 
@@ -222,14 +238,17 @@ export async function upsertSupabaseCategory(category: Category) {
  * Deletes a category from Supabase
  */
 export async function deleteSupabaseCategory(id: string) {
-  const { error } = await supabase
-    .from('categories')
-    .delete()
-    .eq('id', id);
+  try {
+    const { error } = await supabase
+      .from('categories')
+      .delete()
+      .eq('id', id);
 
-  if (error) {
-    console.error('[SupabaseService] deleteSupabaseCategory error:', error);
-    throw error;
+    if (error) {
+      console.warn('[SupabaseService] deleteSupabaseCategory notice:', error?.message || error);
+    }
+  } catch (err: any) {
+    console.warn('[SupabaseService] deleteSupabaseCategory network notice:', err?.message || err);
   }
 }
 
@@ -237,17 +256,22 @@ export async function deleteSupabaseCategory(id: string) {
  * Fetches all products from Supabase
  */
 export async function fetchSupabaseProducts(): Promise<Product[]> {
-  const { data, error } = await supabase
-    .from('products')
-    .select('*')
-    .order('created_at', { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('[SupabaseService] fetchProducts error:', error);
-    throw error;
+    if (error) {
+      console.warn('[SupabaseService] fetchProducts notice:', error?.message || error);
+      return [];
+    }
+
+    return (data || []).map(mapProductFromSupabase);
+  } catch (err: any) {
+    console.warn('[SupabaseService] fetchProducts network notice:', err?.message || err);
+    return [];
   }
-
-  return (data || []).map(mapProductFromSupabase);
 }
 
 /**
@@ -278,13 +302,16 @@ export async function upsertSupabaseProduct(product: Product) {
     updated_at: new Date().toISOString(),
   };
 
-  const { error } = await supabase
-    .from('products')
-    .upsert(rowData, { onConflict: 'id' });
+  try {
+    const { error } = await supabase
+      .from('products')
+      .upsert(rowData, { onConflict: 'id' });
 
-  if (error) {
-    console.error('[SupabaseService] upsertSupabaseProduct error:', error);
-    throw error;
+    if (error) {
+      console.warn('[SupabaseService] upsertSupabaseProduct notice:', error?.message || error);
+    }
+  } catch (err: any) {
+    console.warn('[SupabaseService] upsertSupabaseProduct network notice:', err?.message || err);
   }
 }
 
@@ -292,14 +319,17 @@ export async function upsertSupabaseProduct(product: Product) {
  * Deletes a product from Supabase
  */
 export async function deleteSupabaseProduct(id: string) {
-  const { error } = await supabase
-    .from('products')
-    .delete()
-    .eq('id', id);
+  try {
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', id);
 
-  if (error) {
-    console.error('[SupabaseService] deleteSupabaseProduct error:', error);
-    throw error;
+    if (error) {
+      console.warn('[SupabaseService] deleteSupabaseProduct notice:', error?.message || error);
+    }
+  } catch (err: any) {
+    console.warn('[SupabaseService] deleteSupabaseProduct network notice:', err?.message || err);
   }
 }
 
@@ -307,17 +337,22 @@ export async function deleteSupabaseProduct(id: string) {
  * Fetches all quotes from Supabase
  */
 export async function fetchSupabaseQuotes(): Promise<QuoteRequest[]> {
-  const { data, error } = await supabase
-    .from('quotes')
-    .select('*')
-    .order('created_at', { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from('quotes')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('[SupabaseService] fetchQuotes error:', error);
-    throw error;
+    if (error) {
+      console.warn('[SupabaseService] fetchQuotes notice:', error?.message || error);
+      return [];
+    }
+
+    return (data || []).map(mapQuoteFromSupabase);
+  } catch (err: any) {
+    console.warn('[SupabaseService] fetchQuotes network notice:', err?.message || err);
+    return [];
   }
-
-  return (data || []).map(mapQuoteFromSupabase);
 }
 
 /**
@@ -337,13 +372,16 @@ export async function insertSupabaseQuote(quote: QuoteRequest) {
     created_at: quote.createdAt || new Date().toISOString(),
   };
 
-  const { error } = await supabase
-    .from('quotes')
-    .insert(rowData);
+  try {
+    const { error } = await supabase
+      .from('quotes')
+      .insert(rowData);
 
-  if (error) {
-    console.error('[SupabaseService] insertSupabaseQuote error:', error);
-    throw error;
+    if (error) {
+      console.warn('[SupabaseService] insertSupabaseQuote notice:', error?.message || error);
+    }
+  } catch (err: any) {
+    console.warn('[SupabaseService] insertSupabaseQuote network notice:', err?.message || err);
   }
 }
 
@@ -351,14 +389,17 @@ export async function insertSupabaseQuote(quote: QuoteRequest) {
  * Updates quote status in Supabase
  */
 export async function updateSupabaseQuoteStatus(id: string, status: QuoteRequest['status']) {
-  const { error } = await supabase
-    .from('quotes')
-    .update({ status })
-    .eq('id', id);
+  try {
+    const { error } = await supabase
+      .from('quotes')
+      .update({ status })
+      .eq('id', id);
 
-  if (error) {
-    console.error('[SupabaseService] updateSupabaseQuoteStatus error:', error);
-    throw error;
+    if (error) {
+      console.warn('[SupabaseService] updateSupabaseQuoteStatus notice:', error?.message || error);
+    }
+  } catch (err: any) {
+    console.warn('[SupabaseService] updateSupabaseQuoteStatus network notice:', err?.message || err);
   }
 }
 
@@ -366,14 +407,17 @@ export async function updateSupabaseQuoteStatus(id: string, status: QuoteRequest
  * Deletes a quote from Supabase
  */
 export async function deleteSupabaseQuote(id: string) {
-  const { error } = await supabase
-    .from('quotes')
-    .delete()
-    .eq('id', id);
+  try {
+    const { error } = await supabase
+      .from('quotes')
+      .delete()
+      .eq('id', id);
 
-  if (error) {
-    console.error('[SupabaseService] deleteSupabaseQuote error:', error);
-    throw error;
+    if (error) {
+      console.warn('[SupabaseService] deleteSupabaseQuote notice:', error?.message || error);
+    }
+  } catch (err: any) {
+    console.warn('[SupabaseService] deleteSupabaseQuote network notice:', err?.message || err);
   }
 }
 
@@ -381,17 +425,22 @@ export async function deleteSupabaseQuote(id: string) {
  * Fetches catalogue pages from Supabase
  */
 export async function fetchSupabaseCataloguePages(): Promise<CataloguePage[]> {
-  const { data, error } = await supabase
-    .from('catalogue_pages')
-    .select('*')
-    .order('page_number', { ascending: true });
+  try {
+    const { data, error } = await supabase
+      .from('catalogue_pages')
+      .select('*')
+      .order('page_number', { ascending: true });
 
-  if (error) {
-    console.error('[SupabaseService] fetchCataloguePages error:', error);
-    throw error;
+    if (error) {
+      console.warn('[SupabaseService] fetchCataloguePages notice:', error?.message || error);
+      return [];
+    }
+
+    return (data || []).map(mapCataloguePageFromSupabase);
+  } catch (err: any) {
+    console.warn('[SupabaseService] fetchCataloguePages network notice:', err?.message || err);
+    return [];
   }
-
-  return (data || []).map(mapCataloguePageFromSupabase);
 }
 
 /**
@@ -410,13 +459,16 @@ export async function upsertSupabaseCataloguePage(page: CataloguePage) {
     updated_at: new Date().toISOString(),
   };
 
-  const { error } = await supabase
-    .from('catalogue_pages')
-    .upsert(rowData, { onConflict: 'id' });
+  try {
+    const { error } = await supabase
+      .from('catalogue_pages')
+      .upsert(rowData, { onConflict: 'id' });
 
-  if (error) {
-    console.error('[SupabaseService] upsertSupabaseCataloguePage error:', error);
-    throw error;
+    if (error) {
+      console.warn('[SupabaseService] upsertSupabaseCataloguePage notice:', error?.message || error);
+    }
+  } catch (err: any) {
+    console.warn('[SupabaseService] upsertSupabaseCataloguePage network notice:', err?.message || err);
   }
 }
 

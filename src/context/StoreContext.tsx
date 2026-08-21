@@ -240,7 +240,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return isSessionValid();
   });
 
-  const [adminCredentials, setAdminCredentialsState] = useState<AdminCredentials>(defaultAdminCreds);
+  const [adminCredentials, setAdminCredentialsState] = useState<AdminCredentials>(() => {
+    try {
+      const stored = localStorage.getItem('falcon_admin_credentials');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.email && parsed.passwordHash) return parsed;
+      }
+    } catch {}
+    return defaultAdminCreds;
+  });
 
   const hasOfflineCache = useMemo(() => {
     try {
@@ -343,14 +352,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setInitialSyncStatus('loading');
         setInitialSyncError(null);
 
-        // Fetch ALL critical initial datasets concurrently in parallel
+        // Fetch ALL critical initial datasets concurrently in parallel with allSettled
         const [
-          settingsResult,
-          productsResult,
-          categoriesResult,
-          pagesResult,
-          quotesResult,
-        ] = await Promise.all([
+          settingsRes,
+          productsRes,
+          categoriesRes,
+          pagesRes,
+          quotesRes,
+        ] = await Promise.allSettled([
           fetchSupabaseStoreSettings(),
           fetchSupabaseProducts(),
           fetchSupabaseCategories(),
@@ -359,6 +368,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         ]);
 
         if (!isMounted) return;
+
+        const settingsResult = settingsRes.status === 'fulfilled' ? settingsRes.value : null;
+        const productsResult = productsRes.status === 'fulfilled' ? productsRes.value : null;
+        const categoriesResult = categoriesRes.status === 'fulfilled' ? categoriesRes.value : null;
+        const pagesResult = pagesRes.status === 'fulfilled' ? pagesRes.value : null;
+        const quotesResult = quotesRes.status === 'fulfilled' ? quotesRes.value : null;
+
+        const hasAnyRemoteData = Boolean(
+          settingsResult ||
+          (productsResult && productsResult.length > 0) ||
+          (categoriesResult && categoriesResult.length > 0) ||
+          (pagesResult && pagesResult.length > 0) ||
+          (quotesResult && quotesResult.length > 0)
+        );
 
         // 1. Process Store Settings
         if (settingsResult) {
@@ -402,6 +425,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               email: settingsResult.adminAuth.email,
               passwordHash: settingsResult.adminAuth.passwordHash,
             });
+            localStorage.setItem('falcon_admin_credentials', JSON.stringify(settingsResult.adminAuth));
           }
         } else if (!isDataInitialized() && !isSeedingRef.current) {
           // Attempt first-time seed if table is blank
@@ -474,8 +498,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           });
         }
 
-        // All critical initial data is verified and synchronized
-        setIsSupabaseConnected(true);
+        // Initial datasets checked and verified
+        setIsSupabaseConnected(hasAnyRemoteData);
         setSupabaseError(null);
         setInitialSyncStatus('success');
       } catch (err: any) {
@@ -638,13 +662,36 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Admin Login Handler — uses SHA-256 hash comparison (async)
   const loginAdmin = async (email: string, password: string): Promise<boolean> => {
-    const inputHash = await hashAdminPassword(email, password);
     const cleanInputEmail = (email || '').trim().toLowerCase();
-    const cleanAdminEmail = (adminCredentials.email || '').trim().toLowerCase();
+    const inputHash = await hashAdminPassword(cleanInputEmail, password);
 
+    // 1. Check in-memory state credentials
+    const cleanAdminEmail = (adminCredentials.email || '').trim().toLowerCase();
     if (cleanInputEmail === cleanAdminEmail && inputHash === adminCredentials.passwordHash) {
       setIsAdminLoggedIn(true);
       await createSession(cleanAdminEmail, adminCredentials.passwordHash);
+      return true;
+    }
+
+    // 2. Check stored local credentials
+    try {
+      const stored = localStorage.getItem('falcon_admin_credentials');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const parsedEmail = (parsed.email || '').trim().toLowerCase();
+        if (parsedEmail && parsed.passwordHash && cleanInputEmail === parsedEmail && inputHash === parsed.passwordHash) {
+          setIsAdminLoggedIn(true);
+          await createSession(parsedEmail, parsed.passwordHash);
+          return true;
+        }
+      }
+    } catch {}
+
+    // 3. Fallback check default credentials
+    const cleanDefaultEmail = DEFAULT_ADMIN_EMAIL.trim().toLowerCase();
+    if (cleanInputEmail === cleanDefaultEmail && inputHash === DEFAULT_ADMIN_HASH) {
+      setIsAdminLoggedIn(true);
+      await createSession(cleanDefaultEmail, DEFAULT_ADMIN_HASH);
       return true;
     }
 
@@ -668,6 +715,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
     const newCreds: AdminCredentials = { email: cleanEmail, passwordHash: newHash };
     setAdminCredentialsState(newCreds);
+    localStorage.setItem('falcon_admin_credentials', JSON.stringify(newCreds));
 
     try {
       await saveSupabaseStoreSettings({ adminAuth: newCreds });

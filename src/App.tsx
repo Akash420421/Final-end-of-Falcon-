@@ -218,8 +218,18 @@ function MainContent() {
   // Standalone Admin Panel Route — requires authentication
   if (isAdminPanelOpen) {
     if (!isAdminLoggedIn) {
-      // Not authenticated — redirect to home cleanly without setState during render
-      return <Navigate to="/" replace />;
+      return (
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+          <SEOHead />
+          <AdminLoginModal
+            isOpen={true}
+            onClose={() => navigate('/')}
+            onSuccess={() => {
+              // Successfully logged in — state update will immediately render AdminPanelModal
+            }}
+          />
+        </div>
+      );
     }
     return (
       <AdminPanelModal

@@ -91,28 +91,6 @@ export const CatalogueTab: React.FC<CatalogueTabProps> = ({
 
   return (
     <div className="space-y-6 w-full max-w-full overflow-hidden">
-      {/* Permanent Cloud Storage Verification Banner */}
-      <div className="bg-gradient-to-r from-emerald-950/80 via-slate-900 to-emerald-950/80 p-4 rounded-2xl border border-emerald-500/40 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className="p-2 bg-emerald-500/20 rounded-xl text-emerald-400 border border-emerald-500/30 shrink-0 mt-0.5">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-black text-white">
-                Permanent High-Capacity Storage Active
-              </span>
-              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-500/40">
-                Max 25 MB / File
-              </span>
-            </div>
-            <p className="text-[11px] text-emerald-200/80 mt-0.5 leading-relaxed">
-              All catalogue photos and product images are stored permanently in the Supabase Cloud Storage bucket with lossless WebP compression and instant CDN delivery.
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Global Settings Form */}
       <form
         onSubmit={handleSaveSettings}
