@@ -1,5 +1,6 @@
 import React from 'react';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
+import { safeLocalStorageRemove } from '../utils/safeStorage';
 
 interface Props {
   children: React.ReactNode;
@@ -22,9 +23,33 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   public override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('Uncaught error caught by ErrorBoundary:', error, errorInfo);
+
+    // If error was quota or JSON parse related, automatically clean heavy cached assets
+    if (
+      error?.name === 'QuotaExceededError' ||
+      error?.message?.includes('quota') ||
+      error?.message?.includes('Quota') ||
+      error?.message?.includes('localStorage')
+    ) {
+      try {
+        safeLocalStorageRemove('falcon_catalogue_settings');
+        safeLocalStorageRemove('falcon_products');
+        safeLocalStorageRemove('falcon_hero_content');
+      } catch {
+        // safe ignore
+      }
+    }
   }
 
   private handleReload = () => {
+    // Auto-clean storage in case corrupted data caused the reload
+    try {
+      safeLocalStorageRemove('falcon_catalogue_settings');
+      safeLocalStorageRemove('falcon_products');
+      safeLocalStorageRemove('falcon_hero_content');
+    } catch {
+      // safe ignore
+    }
     window.location.reload();
   };
 
@@ -57,3 +82,4 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return this.props.children;
   }
 }
+

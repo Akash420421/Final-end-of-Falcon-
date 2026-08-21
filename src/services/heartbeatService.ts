@@ -1,4 +1,8 @@
 import supabase from '../supabase';
+import {
+  safeLocalStorageGet,
+  safeLocalStorageSet,
+} from '../utils/safeStorage';
 
 const HEARTBEAT_KEY = 'falcon_supabase_last_pulse_ts';
 const SIMULATION_HISTORY_KEY = 'falcon_supabase_last_simulation';
@@ -39,7 +43,7 @@ const listeners: Set<HeartbeatListener> = new Set();
 function loadLastSimulation(): SimulationSummary | null {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = localStorage.getItem(SIMULATION_HISTORY_KEY);
+    const raw = safeLocalStorageGet(SIMULATION_HISTORY_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -47,10 +51,10 @@ function loadLastSimulation(): SimulationSummary | null {
 }
 
 let currentStatus: HeartbeatStatus = {
-  lastPulseTime: typeof window !== 'undefined' ? localStorage.getItem(HEARTBEAT_KEY) : null,
+  lastPulseTime: typeof window !== 'undefined' ? safeLocalStorageGet(HEARTBEAT_KEY) : null,
   lastPulseStatus: 'idle',
   lastPulseMessage: 'Ready',
-  nextScheduledTime: calculateNextScheduled(typeof window !== 'undefined' ? localStorage.getItem(HEARTBEAT_KEY) : null),
+  nextScheduledTime: calculateNextScheduled(typeof window !== 'undefined' ? safeLocalStorageGet(HEARTBEAT_KEY) : null),
   lastSimulation: loadLastSimulation(),
 };
 
@@ -123,7 +127,7 @@ export async function sendHeartbeatPulse(manual = false): Promise<boolean> {
 
     // 2. Mark timestamp
     if (typeof window !== 'undefined') {
-      localStorage.setItem(HEARTBEAT_KEY, now);
+      safeLocalStorageSet(HEARTBEAT_KEY, now);
     }
 
     currentStatus = {
@@ -322,8 +326,8 @@ export async function runMultiUserSimulation(
 
   // Persist timestamp & summary
   if (typeof window !== 'undefined') {
-    localStorage.setItem(HEARTBEAT_KEY, nowStr);
-    localStorage.setItem(SIMULATION_HISTORY_KEY, JSON.stringify(summary));
+    safeLocalStorageSet(HEARTBEAT_KEY, nowStr);
+    safeLocalStorageSet(SIMULATION_HISTORY_KEY, JSON.stringify(summary));
   }
 
   currentStatus = {
@@ -345,7 +349,7 @@ export async function runMultiUserSimulation(
 export function initAutomatedHeartbeat() {
   if (typeof window === 'undefined') return;
 
-  const lastPulseStr = localStorage.getItem(HEARTBEAT_KEY);
+  const lastPulseStr = safeLocalStorageGet(HEARTBEAT_KEY);
   let shouldPulse = false;
 
   if (!lastPulseStr) {

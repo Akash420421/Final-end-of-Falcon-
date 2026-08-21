@@ -34,6 +34,12 @@ import {
   generateSessionToken,
   verifySessionToken,
 } from '../utils/security';
+import {
+  safeLocalStorageSet,
+  safeLocalStorageGet,
+  safeLocalStorageRemove,
+} from '../utils/safeStorage';
+import { subscribeToHeartbeat } from '../services/heartbeatService';
 
 // Pre-computed hash of the initial default admin credentials (SHA-256)
 const DEFAULT_ADMIN_EMAIL = 'rajveergreat786@gmail.com';
@@ -43,7 +49,7 @@ const DEFAULT_ADMIN_HASH = '7dde1b62c885a9d184a8b41e0ac7ef71f22f6d717aabb4064f6e
 const SESSION_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
 function isSessionValid(email?: string, passwordHash?: string): boolean {
-  const session = localStorage.getItem('falcon_admin_session');
+  const session = safeLocalStorageGet('falcon_admin_session');
   if (!session) return false;
   try {
     const parsed = JSON.parse(session);
@@ -74,11 +80,11 @@ async function createSession(email: string, passwordHash: string): Promise<void>
     expiresAt,
     createdAt: new Date().toISOString(),
   };
-  localStorage.setItem('falcon_admin_session', JSON.stringify(session));
+  safeLocalStorageSet('falcon_admin_session', JSON.stringify(session));
 }
 
 function destroySession(): void {
-  localStorage.removeItem('falcon_admin_session');
+  safeLocalStorageRemove('falcon_admin_session');
 }
 
 export type { CompanyDetails };
@@ -233,8 +239,8 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [initialSyncStatus, setInitialSyncStatus] = useState<'loading' | 'success' | 'error'>(() => {
     try {
-      const storedProds = localStorage.getItem('falcon_products');
-      const storedCats = localStorage.getItem('falcon_categories');
+      const storedProds = safeLocalStorageGet('falcon_products');
+      const storedCats = safeLocalStorageGet('falcon_categories');
       if (storedProds && storedCats && JSON.parse(storedProds).length > 0) {
         return 'success';
       }
@@ -242,7 +248,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return 'loading';
   });
   const [initialSyncError, setInitialSyncError] = useState<string | null>(null);
-  const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
+  const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(() => {
+    return typeof navigator === 'undefined' ? true : navigator.onLine;
+  });
   const [supabaseError, setSupabaseError] = useState<string | null>(null);
 
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
@@ -251,7 +259,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [adminCredentials, setAdminCredentialsState] = useState<AdminCredentials>(() => {
     try {
-      const stored = localStorage.getItem('falcon_admin_credentials');
+      const stored = safeLocalStorageGet('falcon_admin_credentials');
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed.email && parsed.passwordHash) return parsed;
@@ -262,8 +270,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const hasOfflineCache = useMemo(() => {
     try {
-      const storedProds = localStorage.getItem('falcon_products');
-      const storedCats = localStorage.getItem('falcon_categories');
+      const storedProds = safeLocalStorageGet('falcon_products');
+      const storedCats = safeLocalStorageGet('falcon_categories');
       return Boolean(storedProds && storedCats);
     } catch {
       return false;
@@ -271,7 +279,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const [companyDetails, setCompanyDetailsState] = useState<CompanyDetails>(() => {
-    const saved = localStorage.getItem('falcon_company_details');
+    const saved = safeLocalStorageGet('falcon_company_details');
     try {
       return saved ? mergeCompanyDetails(JSON.parse(saved)) : defaultCompanyDetails;
     } catch {
@@ -280,36 +288,36 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const [heroContent, setHeroContentState] = useState<HeroContent>(() => {
-    const saved = localStorage.getItem('falcon_hero_content');
+    const saved = safeLocalStorageGet('falcon_hero_content');
     return saved ? JSON.parse(saved) : defaultHeroContent;
   });
 
   const [logoImageUrl, setLogoImageUrlState] = useState<string>(() => {
-    return localStorage.getItem('falcon_logo_image') || '';
+    return safeLocalStorageGet('falcon_logo_image') || '';
   });
 
   const [products, setProductsState] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('falcon_products');
+    const saved = safeLocalStorageGet('falcon_products');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [categories, setCategoriesState] = useState<Category[]>(() => {
-    const saved = localStorage.getItem('falcon_categories');
+    const saved = safeLocalStorageGet('falcon_categories');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [whyChooseUs, setWhyChooseUsState] = useState<WhyChooseItem[]>(() => {
-    const saved = localStorage.getItem('falcon_why_choose_us');
+    const saved = safeLocalStorageGet('falcon_why_choose_us');
     return saved ? JSON.parse(saved) : defaultWhyChooseUsData;
   });
 
   const [quotes, setQuotesState] = useState<QuoteRequest[]>(() => {
-    const saved = localStorage.getItem('falcon_quotes');
+    const saved = safeLocalStorageGet('falcon_quotes');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [catalogueSettings, setCatalogueSettingsState] = useState<CatalogueSettings>(() => {
-    const saved = localStorage.getItem('falcon_catalogue_settings');
+    const saved = safeLocalStorageGet('falcon_catalogue_settings');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -348,9 +356,19 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [isAdminLoggedIn]);
 
+  // Sync connection state with heartbeat pulses
+  useEffect(() => {
+    const unsubscribe = subscribeToHeartbeat((status) => {
+      if (status.lastPulseStatus === 'success' || status.lastSimulation?.status === 'success') {
+        setIsSupabaseConnected(true);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
   // Guard flag for initialization
-  const isDataInitialized = () => localStorage.getItem('falcon_data_initialized') === 'true';
-  const markDataInitialized = () => localStorage.setItem('falcon_data_initialized', 'true');
+  const isDataInitialized = () => safeLocalStorageGet('falcon_data_initialized') === 'true';
+  const markDataInitialized = () => safeLocalStorageSet('falcon_data_initialized', 'true');
 
   // Supabase initial load and real-time subscription
   useEffect(() => {
@@ -360,8 +378,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       try {
         const hasExistingData = Boolean(
           products.length > 0 ||
-          (localStorage.getItem('falcon_products') &&
-           JSON.parse(localStorage.getItem('falcon_products') || '[]').length > 0)
+          (safeLocalStorageGet('falcon_products') &&
+           JSON.parse(safeLocalStorageGet('falcon_products') || '[]').length > 0)
         );
 
         if (!hasExistingData) {
@@ -406,7 +424,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           if (settingsResult.companyDetails) {
             const merged = mergeCompanyDetails(settingsResult.companyDetails);
             setCompanyDetailsState(merged);
-            localStorage.setItem('falcon_company_details', JSON.stringify(merged));
+            safeLocalStorageSet('falcon_company_details', JSON.stringify(merged));
           }
           if (settingsResult.heroContent) {
             const mergedHero: HeroContent = {
@@ -416,15 +434,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               showBadge: settingsResult.heroContent.showBadge !== undefined ? settingsResult.heroContent.showBadge : true,
             };
             setHeroContentState(mergedHero);
-            localStorage.setItem('falcon_hero_content', JSON.stringify(mergedHero));
+            safeLocalStorageSet('falcon_hero_content', JSON.stringify(mergedHero));
           }
           if (settingsResult.logoImageUrl !== undefined) {
             setLogoImageUrlState(settingsResult.logoImageUrl);
-            localStorage.setItem('falcon_logo_image', settingsResult.logoImageUrl);
+            safeLocalStorageSet('falcon_logo_image', settingsResult.logoImageUrl);
           }
           if (settingsResult.whyChooseUs) {
             setWhyChooseUsState(settingsResult.whyChooseUs);
-            localStorage.setItem('falcon_why_choose_us', JSON.stringify(settingsResult.whyChooseUs));
+            safeLocalStorageSet('falcon_why_choose_us', JSON.stringify(settingsResult.whyChooseUs));
           }
           if (settingsResult.catalogueSettings) {
             const mergedCat: CatalogueSettings = {
@@ -435,14 +453,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 : defaultCatalogueSettings.pages,
             };
             setCatalogueSettingsState(mergedCat);
-            localStorage.setItem('falcon_catalogue_settings', JSON.stringify(mergedCat));
+            safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(mergedCat));
           }
           if (settingsResult.adminAuth?.email && settingsResult.adminAuth?.passwordHash) {
             setAdminCredentialsState({
               email: settingsResult.adminAuth.email,
               passwordHash: settingsResult.adminAuth.passwordHash,
             });
-            localStorage.setItem('falcon_admin_credentials', JSON.stringify(settingsResult.adminAuth));
+            safeLocalStorageSet('falcon_admin_credentials', JSON.stringify(settingsResult.adminAuth));
           }
         } else if (!isDataInitialized() && !isSeedingRef.current) {
           // Attempt first-time seed if table is blank
@@ -461,7 +479,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (productsResult && productsResult.length > 0) {
           markDataInitialized();
           setProductsState(productsResult);
-          localStorage.setItem('falcon_products', JSON.stringify(productsResult));
+          safeLocalStorageSet('falcon_products', JSON.stringify(productsResult));
         } else if (!isDataInitialized() && !isSeedingRef.current) {
           for (const prod of defaultProductsData) {
             upsertSupabaseProduct(prod).catch(() => {});
@@ -473,7 +491,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           markDataInitialized();
           const sortedCats = [...categoriesResult].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
           setCategoriesState(sortedCats);
-          localStorage.setItem('falcon_categories', JSON.stringify(sortedCats));
+          safeLocalStorageSet('falcon_categories', JSON.stringify(sortedCats));
         } else if (!isDataInitialized() && !isSeedingRef.current) {
           for (const cat of defaultCategoriesData) {
             upsertSupabaseCategory(cat).catch(() => {});
@@ -483,7 +501,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // 4. Process Quotes
         if (quotesResult && quotesResult.length > 0) {
           setQuotesState(quotesResult);
-          localStorage.setItem('falcon_quotes', JSON.stringify(quotesResult));
+          safeLocalStorageSet('falcon_quotes', JSON.stringify(quotesResult));
         }
 
         // 5. Process Catalogue Pages
@@ -510,7 +528,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
             merged.sort((a, b) => (a.pageNumber ?? 0) - (b.pageNumber ?? 0));
             const updated = { ...prev, pages: merged };
-            localStorage.setItem('falcon_catalogue_settings', JSON.stringify(updated));
+            safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
             return updated;
           });
         }
@@ -519,6 +537,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
         const hasLoadedData = hasAnyRemoteData || hasOfflineCache;
 
+        // Check if Supabase responded to our queries (fulfilled promises mean the endpoint is live and reachable)
+        const isSupabaseReachable =
+          settingsRes.status === 'fulfilled' ||
+          productsRes.status === 'fulfilled' ||
+          categoriesRes.status === 'fulfilled' ||
+          pagesRes.status === 'fulfilled' ||
+          quotesRes.status === 'fulfilled';
+
         if (!hasLoadedData && isOffline) {
           setIsSupabaseConnected(false);
           setInitialSyncError('No internet connection. Please check your network connection.');
@@ -526,8 +552,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           return;
         }
 
-        // Initial datasets checked and verified
-        setIsSupabaseConnected(hasAnyRemoteData);
+        // Database verified and online
+        setIsSupabaseConnected(isSupabaseReachable || hasAnyRemoteData);
         setSupabaseError(null);
         setInitialSyncStatus('success');
       } catch (err: any) {
@@ -543,7 +569,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             );
             setInitialSyncStatus('error');
           } else {
-            setIsSupabaseConnected(false);
+            setIsSupabaseConnected(!isOffline);
             setSupabaseError(null);
             setInitialSyncError(null);
             setInitialSyncStatus('success');
@@ -610,24 +636,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             if (newDetails) {
               const merged = mergeCompanyDetails(newDetails);
               setCompanyDetailsState(merged);
-              localStorage.setItem('falcon_company_details', JSON.stringify(merged));
+              safeLocalStorageSet('falcon_company_details', JSON.stringify(merged));
             }
             if (newHero) {
               setHeroContentState(newHero);
-              localStorage.setItem('falcon_hero_content', JSON.stringify(newHero));
+              safeLocalStorageSet('falcon_hero_content', JSON.stringify(newHero));
             }
             if (newLogo !== undefined) {
               setLogoImageUrlState(newLogo);
-              localStorage.setItem('falcon_logo_image', newLogo);
+              safeLocalStorageSet('falcon_logo_image', newLogo);
             }
             if (newWhy) {
               setWhyChooseUsState(newWhy);
-              localStorage.setItem('falcon_why_choose_us', JSON.stringify(newWhy));
+              safeLocalStorageSet('falcon_why_choose_us', JSON.stringify(newWhy));
             }
             if (newCat) {
               setCatalogueSettingsState((prev) => {
                 const merged = { ...prev, ...newCat };
-                localStorage.setItem('falcon_catalogue_settings', JSON.stringify(merged));
+                safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(merged));
                 return merged;
               });
             }
@@ -655,7 +681,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               }
               nextPages.sort((a, b) => (a.pageNumber ?? 0) - (b.pageNumber ?? 0));
               const updated = { ...prev, pages: nextPages };
-              localStorage.setItem('falcon_catalogue_settings', JSON.stringify(updated));
+              safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
               return updated;
             });
           } else if (payload.eventType === 'DELETE') {
@@ -665,7 +691,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 const currentPages = prev.pages || defaultCatalogueSettings.pages;
                 const nextPages = currentPages.filter((p) => p.id !== deletedId);
                 const updated = { ...prev, pages: nextPages };
-                localStorage.setItem('falcon_catalogue_settings', JSON.stringify(updated));
+                safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
                 return updated;
               });
             }
@@ -713,7 +739,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // 2. Check stored local credentials
     try {
-      const stored = localStorage.getItem('falcon_admin_credentials');
+      const stored = safeLocalStorageGet('falcon_admin_credentials');
       if (stored) {
         const parsed = JSON.parse(stored);
         const parsedEmail = (parsed.email || '').trim().toLowerCase();
@@ -753,7 +779,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
     const newCreds: AdminCredentials = { email: cleanEmail, passwordHash: newHash };
     setAdminCredentialsState(newCreds);
-    localStorage.setItem('falcon_admin_credentials', JSON.stringify(newCreds));
+    safeLocalStorageSet('falcon_admin_credentials', JSON.stringify(newCreds));
 
     try {
       await saveSupabaseStoreSettings({ adminAuth: newCreds });
@@ -766,7 +792,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const updateCompanyDetails = async (details: Partial<CompanyDetails>) => {
     const updated = mergeCompanyDetails({ ...companyDetails, ...details });
     setCompanyDetailsState(updated);
-    localStorage.setItem('falcon_company_details', JSON.stringify(updated));
+    safeLocalStorageSet('falcon_company_details', JSON.stringify(updated));
 
     try {
       await saveSupabaseStoreSettings({ companyDetails: updated });
@@ -788,7 +814,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
     const updated = { ...heroContent, ...payload };
     setHeroContentState(updated);
-    localStorage.setItem('falcon_hero_content', JSON.stringify(updated));
+    safeLocalStorageSet('falcon_hero_content', JSON.stringify(updated));
 
     try {
       await saveSupabaseStoreSettings({ heroContent: updated });
@@ -804,7 +830,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       finalUrl = await uploadOrCompressImage(url, 'logo');
     }
     setLogoImageUrlState(finalUrl);
-    localStorage.setItem('falcon_logo_image', finalUrl);
+    safeLocalStorageSet('falcon_logo_image', finalUrl);
 
     try {
       await saveSupabaseStoreSettings({ logoImageUrl: finalUrl });
@@ -838,7 +864,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     setProductsState((prev) => [newProd, ...prev]);
-    localStorage.setItem('falcon_products', JSON.stringify([newProd, ...products]));
+    safeLocalStorageSet('falcon_products', JSON.stringify([newProd, ...products]));
 
     try {
       await upsertSupabaseProduct(newProd);
@@ -866,7 +892,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const nextProducts = products.map((p) => (p.id === id ? { ...p, ...payload } : p));
     setProductsState(nextProducts);
-    localStorage.setItem('falcon_products', JSON.stringify(nextProducts));
+    safeLocalStorageSet('falcon_products', JSON.stringify(nextProducts));
 
     const target = nextProducts.find((p) => p.id === id);
     if (target) {
@@ -882,7 +908,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const deleteProduct = async (id: string) => {
     const nextProducts = products.filter((p) => p.id !== id);
     setProductsState(nextProducts);
-    localStorage.setItem('falcon_products', JSON.stringify(nextProducts));
+    safeLocalStorageSet('falcon_products', JSON.stringify(nextProducts));
 
     try {
       await deleteSupabaseProduct(id);
@@ -909,7 +935,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const nextCategories = [...categories, newCat];
     setCategoriesState(nextCategories);
-    localStorage.setItem('falcon_categories', JSON.stringify(nextCategories));
+    safeLocalStorageSet('falcon_categories', JSON.stringify(nextCategories));
 
     try {
       await upsertSupabaseCategory(newCat);
@@ -928,7 +954,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const nextCategories = categories.map((c) => (c.id === id ? { ...c, ...payload } : c));
     setCategoriesState(nextCategories);
-    localStorage.setItem('falcon_categories', JSON.stringify(nextCategories));
+    safeLocalStorageSet('falcon_categories', JSON.stringify(nextCategories));
 
     const target = nextCategories.find((c) => c.id === id);
     if (target) {
@@ -944,7 +970,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const deleteCategory = async (id: string) => {
     const nextCategories = categories.filter((c) => c.id !== id);
     setCategoriesState(nextCategories);
-    localStorage.setItem('falcon_categories', JSON.stringify(nextCategories));
+    safeLocalStorageSet('falcon_categories', JSON.stringify(nextCategories));
 
     try {
       await deleteSupabaseCategory(id);
@@ -957,7 +983,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const reorderCategories = async (newOrderedCategories: Category[]) => {
     const updatedWithOrder = newOrderedCategories.map((cat, idx) => ({ ...cat, order: idx + 1 }));
     setCategoriesState(updatedWithOrder);
-    localStorage.setItem('falcon_categories', JSON.stringify(updatedWithOrder));
+    safeLocalStorageSet('falcon_categories', JSON.stringify(updatedWithOrder));
 
     try {
       for (const cat of updatedWithOrder) {
@@ -979,7 +1005,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
     const nextQuotes = [newQuote, ...quotes];
     setQuotesState(nextQuotes);
-    localStorage.setItem('falcon_quotes', JSON.stringify(nextQuotes));
+    safeLocalStorageSet('falcon_quotes', JSON.stringify(nextQuotes));
 
     try {
       await insertSupabaseQuote(newQuote);
@@ -992,7 +1018,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const updateQuoteStatus = async (id: string, status: QuoteRequest['status']) => {
     const nextQuotes = quotes.map((q) => (q.id === id ? { ...q, status } : q));
     setQuotesState(nextQuotes);
-    localStorage.setItem('falcon_quotes', JSON.stringify(nextQuotes));
+    safeLocalStorageSet('falcon_quotes', JSON.stringify(nextQuotes));
 
     try {
       await updateSupabaseQuoteStatus(id, status);
@@ -1005,7 +1031,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const deleteQuote = async (id: string) => {
     const nextQuotes = quotes.filter((q) => q.id !== id);
     setQuotesState(nextQuotes);
-    localStorage.setItem('falcon_quotes', JSON.stringify(nextQuotes));
+    safeLocalStorageSet('falcon_quotes', JSON.stringify(nextQuotes));
 
     try {
       await deleteSupabaseQuote(id);
@@ -1017,7 +1043,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // 15. Update Why Choose Us items
   const updateWhyChooseUs = async (items: WhyChooseItem[]) => {
     setWhyChooseUsState(items);
-    localStorage.setItem('falcon_why_choose_us', JSON.stringify(items));
+    safeLocalStorageSet('falcon_why_choose_us', JSON.stringify(items));
 
     try {
       await saveSupabaseStoreSettings({ whyChooseUs: items });
@@ -1033,7 +1059,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ...settings,
     };
     setCatalogueSettingsState(updated);
-    localStorage.setItem('falcon_catalogue_settings', JSON.stringify(updated));
+    safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
 
     try {
       await saveSupabaseStoreSettings({ catalogueSettings: updated });
@@ -1062,7 +1088,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         pages: updatedPages,
       };
       nextSettings = updated;
-      localStorage.setItem('falcon_catalogue_settings', JSON.stringify(updated));
+      safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
       return updated;
     });
 
@@ -1086,7 +1112,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         pages: sorted,
       };
       nextSettings = updated;
-      localStorage.setItem('falcon_catalogue_settings', JSON.stringify(updated));
+      safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
       return updated;
     });
 
@@ -1111,13 +1137,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCategoriesState(defaultCategoriesData);
     setWhyChooseUsState(defaultWhyChooseUsData);
 
-    localStorage.removeItem('falcon_company_details');
-    localStorage.removeItem('falcon_hero_content');
-    localStorage.removeItem('falcon_logo_image');
-    localStorage.removeItem('falcon_products');
-    localStorage.removeItem('falcon_categories');
-    localStorage.removeItem('falcon_why_choose_us');
-    localStorage.removeItem('falcon_data_initialized');
+    safeLocalStorageRemove('falcon_company_details');
+    safeLocalStorageRemove('falcon_hero_content');
+    safeLocalStorageRemove('falcon_logo_image');
+    safeLocalStorageRemove('falcon_products');
+    safeLocalStorageRemove('falcon_categories');
+    safeLocalStorageRemove('falcon_why_choose_us');
+    safeLocalStorageRemove('falcon_data_initialized');
 
     try {
       await saveSupabaseStoreSettings({

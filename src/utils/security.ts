@@ -6,6 +6,12 @@
  * 4. Image/file MIME-type validation
  */
 
+import {
+  safeLocalStorageGet,
+  safeLocalStorageSet,
+  safeLocalStorageRemove,
+} from './safeStorage';
+
 const SESSION_SALT = 'falcon_secure_session_token_v2';
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 60 * 1000; // 1 minute lockout after 5 failed attempts
@@ -66,7 +72,7 @@ const RATE_LIMIT_KEY = 'falcon_login_rate_limit';
 
 export function getLoginRateLimitState(): { isLocked: boolean; remainingSeconds: number; attemptsLeft: number } {
   try {
-    const raw = localStorage.getItem(RATE_LIMIT_KEY);
+    const raw = safeLocalStorageGet(RATE_LIMIT_KEY);
     if (!raw) {
       return { isLocked: false, remainingSeconds: 0, attemptsLeft: MAX_FAILED_ATTEMPTS };
     }
@@ -80,7 +86,7 @@ export function getLoginRateLimitState(): { isLocked: boolean; remainingSeconds:
 
     // Reset if lockout expired
     if (state.lockoutUntil && state.lockoutUntil <= now) {
-      localStorage.removeItem(RATE_LIMIT_KEY);
+      safeLocalStorageRemove(RATE_LIMIT_KEY);
       return { isLocked: false, remainingSeconds: 0, attemptsLeft: MAX_FAILED_ATTEMPTS };
     }
 
@@ -93,17 +99,17 @@ export function getLoginRateLimitState(): { isLocked: boolean; remainingSeconds:
 
 export function recordFailedLoginAttempt(): { isLocked: boolean; remainingSeconds: number; attemptsLeft: number } {
   try {
-    const raw = localStorage.getItem(RATE_LIMIT_KEY);
+    const raw = safeLocalStorageGet(RATE_LIMIT_KEY);
     let state: RateLimitState = raw ? JSON.parse(raw) : { failedAttempts: 0, lockoutUntil: 0 };
     state.failedAttempts = (state.failedAttempts || 0) + 1;
 
     if (state.failedAttempts >= MAX_FAILED_ATTEMPTS) {
       state.lockoutUntil = Date.now() + LOCKOUT_DURATION_MS;
-      localStorage.setItem(RATE_LIMIT_KEY, JSON.stringify(state));
+      safeLocalStorageSet(RATE_LIMIT_KEY, JSON.stringify(state));
       return { isLocked: true, remainingSeconds: Math.ceil(LOCKOUT_DURATION_MS / 1000), attemptsLeft: 0 };
     }
 
-    localStorage.setItem(RATE_LIMIT_KEY, JSON.stringify(state));
+    safeLocalStorageSet(RATE_LIMIT_KEY, JSON.stringify(state));
     return { isLocked: false, remainingSeconds: 0, attemptsLeft: MAX_FAILED_ATTEMPTS - state.failedAttempts };
   } catch {
     return { isLocked: false, remainingSeconds: 0, attemptsLeft: 0 };
@@ -111,7 +117,7 @@ export function recordFailedLoginAttempt(): { isLocked: boolean; remainingSecond
 }
 
 export function clearLoginRateLimit(): void {
-  localStorage.removeItem(RATE_LIMIT_KEY);
+  safeLocalStorageRemove(RATE_LIMIT_KEY);
 }
 
 /**
