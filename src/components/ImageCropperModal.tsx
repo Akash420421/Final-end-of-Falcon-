@@ -209,12 +209,12 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
 
       ctx.restore();
 
-      // Export as high quality JPEG (or PNG if transparent)
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      // Export as ultra-high quality WebP / JPEG
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.96);
       const optimizedUrl = await compressImageDataUrl(dataUrl, {
-        maxWidth: 1000,
-        maxHeight: 1000,
-        quality: 0.88,
+        maxWidth: 2400,
+        maxHeight: 2400,
+        quality: 0.95,
       });
 
       await onCropComplete(optimizedUrl || dataUrl);

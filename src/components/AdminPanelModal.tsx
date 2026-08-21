@@ -136,9 +136,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
       const isCatalogue = label.toLowerCase().includes('catalogue');
 
       const dataUrl = await compressImageFile(file, {
-        maxWidth: isCatalogue ? 1600 : isBanner ? 1200 : isLogo ? 800 : 1200,
-        maxHeight: isCatalogue ? 2000 : isBanner ? 600 : isLogo ? 800 : 1200,
-        quality: 0.9,
+        maxWidth: isCatalogue ? 2400 : isBanner ? 2000 : isLogo ? 1200 : 1800,
+        maxHeight: isCatalogue ? 3200 : isBanner ? 1000 : isLogo ? 1200 : 1800,
+        quality: 0.95,
       });
 
       if (dataUrl) {

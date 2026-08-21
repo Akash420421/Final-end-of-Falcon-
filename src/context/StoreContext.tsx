@@ -231,7 +231,16 @@ const mergeCompanyDetails = (data?: Partial<CompanyDetails> | null): CompanyDeta
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [initialSyncStatus, setInitialSyncStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [initialSyncStatus, setInitialSyncStatus] = useState<'loading' | 'success' | 'error'>(() => {
+    try {
+      const storedProds = localStorage.getItem('falcon_products');
+      const storedCats = localStorage.getItem('falcon_categories');
+      if (storedProds && storedCats && JSON.parse(storedProds).length > 0) {
+        return 'success';
+      }
+    } catch {}
+    return 'loading';
+  });
   const [initialSyncError, setInitialSyncError] = useState<string | null>(null);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
   const [supabaseError, setSupabaseError] = useState<string | null>(null);
@@ -349,7 +358,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const initSupabaseSync = async () => {
       try {
-        setInitialSyncStatus('loading');
+        const hasExistingData = Boolean(
+          products.length > 0 ||
+          (localStorage.getItem('falcon_products') &&
+           JSON.parse(localStorage.getItem('falcon_products') || '[]').length > 0)
+        );
+
+        if (!hasExistingData) {
+          setInitialSyncStatus('loading');
+        }
         setInitialSyncError(null);
 
         // Fetch ALL critical initial datasets concurrently in parallel with allSettled
