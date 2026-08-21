@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, RefreshCw, Database } from 'lucide-react';
+import { AlertTriangle, RefreshCw, WifiOff, ServerOff } from 'lucide-react';
 
 export const ProductCardSkeleton: React.FC = () => {
   return (
@@ -62,9 +62,9 @@ interface FullPageSkeletonLoaderProps {
 export const FullPageSkeletonLoader: React.FC<FullPageSkeletonLoaderProps> = ({
   error,
   onRetry,
-  onUseOfflineCache,
-  hasCachedData = false,
 }) => {
+  const isBrowserOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-slate-800 flex flex-col w-full overflow-hidden relative">
       {/* 1. Header Skeleton - Clean White & Subtle Neutral Gray */}
@@ -93,45 +93,36 @@ export const FullPageSkeletonLoader: React.FC<FullPageSkeletonLoaderProps> = ({
       {/* Error Overlay / Modal if initialization failed */}
       {error ? (
         <div className="flex-1 flex items-center justify-center p-4 z-20">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-md w-full text-center shadow-2xl space-y-4">
-            <div className="w-14 h-14 bg-red-50 border border-red-200 rounded-2xl flex items-center justify-center mx-auto text-[#E0183D] shadow-sm">
-              <AlertTriangle className="w-7 h-7" />
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-md w-full text-center shadow-xl space-y-5">
+            <div className="w-14 h-14 bg-red-50 border border-red-200 rounded-2xl flex items-center justify-center mx-auto text-[#E0183D] shadow-xs">
+              {isBrowserOffline ? (
+                <WifiOff className="w-7 h-7" />
+              ) : (
+                <ServerOff className="w-7 h-7" />
+              )}
             </div>
 
-            <div className="space-y-1.5">
-              <h3 className="text-base sm:text-lg font-black text-slate-900">
-                Database Synchronization Notice
+            <div className="space-y-2">
+              <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                {isBrowserOffline
+                  ? 'No Internet Connection Detected'
+                  : 'Unable to Connect to Database'}
               </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Unable to reach the live database. You can retry or proceed with cached data.
+              <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
+                {isBrowserOffline
+                  ? 'Please check your internet connection or network speed and try again.'
+                  : 'We could not fetch live store data from the server. Please check your connection and tap retry.'}
               </p>
             </div>
 
-            {error && (
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] text-slate-700 font-mono break-all text-left">
-                <span className="text-red-500 font-bold block mb-0.5">Details:</span>
-                {error}
-              </div>
-            )}
-
-            <div className="pt-2 flex flex-col gap-2">
+            <div className="pt-2">
               {onRetry && (
                 <button
                   onClick={onRetry}
-                  className="w-full bg-[#E0183D] hover:bg-[#c01233] text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow transition active:scale-98"
+                  className="w-full bg-[#E0183D] hover:bg-[#c01233] text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-98 cursor-pointer"
                 >
                   <RefreshCw className="w-4 h-4" />
-                  <span>Retry Database Connection</span>
-                </button>
-              )}
-
-              {hasCachedData && onUseOfflineCache && (
-                <button
-                  onClick={onUseOfflineCache}
-                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-200 transition"
-                >
-                  <Database className="w-3.5 h-3.5" />
-                  <span>Continue with Cached Data</span>
+                  <span>Retry Connection</span>
                 </button>
               )}
             </div>

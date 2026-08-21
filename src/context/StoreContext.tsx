@@ -281,12 +281,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [products, setProductsState] = useState<Product[]>(() => {
     const saved = localStorage.getItem('falcon_products');
-    return saved ? JSON.parse(saved) : defaultProductsData;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [categories, setCategoriesState] = useState<Category[]>(() => {
     const saved = localStorage.getItem('falcon_categories');
-    return saved ? JSON.parse(saved) : defaultCategoriesData;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [whyChooseUs, setWhyChooseUsState] = useState<WhyChooseItem[]>(() => {
@@ -498,6 +498,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           });
         }
 
+        // Check if we have data to display
+        const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+        const hasLoadedData = hasAnyRemoteData || hasOfflineCache;
+
+        if (!hasLoadedData && isOffline) {
+          setIsSupabaseConnected(false);
+          setInitialSyncError('No internet connection. Please check your network connection.');
+          setInitialSyncStatus('error');
+          return;
+        }
+
         // Initial datasets checked and verified
         setIsSupabaseConnected(hasAnyRemoteData);
         setSupabaseError(null);
@@ -505,11 +516,21 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       } catch (err: any) {
         console.warn('[Supabase] Initial sync connection note:', err?.message || err);
         if (isMounted) {
-          // Gracefully continue using local cache / offline fallback so app never gets stuck
-          setIsSupabaseConnected(false);
-          setSupabaseError(null);
-          setInitialSyncError(null);
-          setInitialSyncStatus('success');
+          const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+          if (!hasOfflineCache) {
+            setIsSupabaseConnected(false);
+            setInitialSyncError(
+              isOffline
+                ? 'No internet connection. Please check your network connection.'
+                : 'Unable to connect to the store database. Please check your connection and retry.'
+            );
+            setInitialSyncStatus('error');
+          } else {
+            setIsSupabaseConnected(false);
+            setSupabaseError(null);
+            setInitialSyncError(null);
+            setInitialSyncStatus('success');
+          }
         }
       }
     };
