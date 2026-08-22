@@ -1,7 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
-import { initSmartZoomGatekeeper } from './utils/zoomGatekeeper';
 
 // Smooth error boundary logging for ResizeObserver
 window.addEventListener('error', (event) => {
@@ -16,14 +15,13 @@ window.addEventListener('error', (event) => {
   }
 });
 
-// Initialize Smart 4-Finger Zoom Gatekeeper
-// 1. 2-Finger Zoom-In Blocked: Prevents accidental mobile browser zoom freeze & white-screen issues.
-// 2. 2-Finger Zoom-Out Allowed: Allows smooth recovery/reset if page is zoomed.
-// 3. 4-Finger Zoom Active: Deliberate 4-finger touch fully enables unrestricted zoom.
-// 4. Image Cropper Safe: Bypasses gatekeeper for admin image cropper touch controls.
-initSmartZoomGatekeeper();
+// Disable browser pinch-to-zoom and multi-touch zooming across all pages
+if (typeof document !== 'undefined') {
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
+  document.addEventListener('gesturechange', (e) => e.preventDefault());
+  document.addEventListener('gestureend', (e) => e.preventDefault());
+}
 
 createRoot(document.getElementById('root')!).render(
   <App />
 );
-
