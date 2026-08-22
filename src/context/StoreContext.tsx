@@ -237,16 +237,7 @@ const mergeCompanyDetails = (data?: Partial<CompanyDetails> | null): CompanyDeta
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [initialSyncStatus, setInitialSyncStatus] = useState<'loading' | 'success' | 'error'>(() => {
-    try {
-      const storedProds = safeLocalStorageGet('falcon_products');
-      const storedCats = safeLocalStorageGet('falcon_categories');
-      if (storedProds && storedCats && JSON.parse(storedProds).length > 0) {
-        return 'success';
-      }
-    } catch {}
-    return 'loading';
-  });
+  const [initialSyncStatus, setInitialSyncStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [initialSyncError, setInitialSyncError] = useState<string | null>(null);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(() => {
     return typeof navigator === 'undefined' ? true : navigator.onLine;
@@ -375,16 +366,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     let isMounted = true;
 
     const initSupabaseSync = async () => {
+      const syncStartTime = Date.now();
       try {
-        const hasExistingData = Boolean(
-          products.length > 0 ||
-          (safeLocalStorageGet('falcon_products') &&
-           JSON.parse(safeLocalStorageGet('falcon_products') || '[]').length > 0)
-        );
-
-        if (!hasExistingData) {
-          setInitialSyncStatus('loading');
-        }
+        setInitialSyncStatus('loading');
         setInitialSyncError(null);
 
         // Fetch ALL critical initial datasets concurrently in parallel with allSettled
@@ -552,6 +536,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           return;
         }
 
+        // Ensure a smooth minimum 1 second (1000ms) skeleton loading animation
+        const elapsed = Date.now() - syncStartTime;
+        const minSkeletonDuration = 1000;
+        if (elapsed < minSkeletonDuration) {
+          await new Promise((resolve) => setTimeout(resolve, minSkeletonDuration - elapsed));
+        }
+
+        if (!isMounted) return;
+
         // Database verified and online
         setIsSupabaseConnected(isSupabaseReachable || hasAnyRemoteData);
         setSupabaseError(null);
@@ -559,6 +552,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       } catch (err: any) {
         console.warn('[Supabase] Initial sync connection note:', err?.message || err);
         if (isMounted) {
+          const elapsed = Date.now() - syncStartTime;
+          const minSkeletonDuration = 1000;
+          if (elapsed < minSkeletonDuration) {
+            await new Promise((resolve) => setTimeout(resolve, minSkeletonDuration - elapsed));
+          }
+          if (!isMounted) return;
+
           const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
           if (!hasOfflineCache) {
             setIsSupabaseConnected(false);
