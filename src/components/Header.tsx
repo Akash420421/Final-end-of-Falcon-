@@ -220,11 +220,15 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Center: Desktop Navigation Bar (Integrated directly into the white header) */}
-        <nav className="hidden lg:flex items-center gap-1 xl:gap-2">
+        <nav aria-label="Desktop Navigation" className="hidden lg:flex items-center gap-1 xl:gap-2">
           {/* Home Tab */}
-          <button
-            onClick={() => onSelectTab?.('HOME')}
-            className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-colors ${
+          <a
+            href="/"
+            onClick={(e) => {
+              e.preventDefault();
+              onSelectTab?.('HOME');
+            }}
+            className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-colors no-underline cursor-pointer ${
               activeTab === 'HOME' ? themeStyles.navLinkActive : themeStyles.navLink
             }`}
           >
@@ -237,12 +241,16 @@ export const Header: React.FC<HeaderProps> = ({
                 style={{ willChange: 'transform' }}
               />
             )}
-          </button>
+          </a>
 
           {/* About Tab */}
-          <button
-            onClick={() => onSelectTab?.('ABOUT')}
-            className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-colors ${
+          <a
+            href="/about"
+            onClick={(e) => {
+              e.preventDefault();
+              onSelectTab?.('ABOUT');
+            }}
+            className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-colors no-underline cursor-pointer ${
               activeTab === 'ABOUT' ? themeStyles.navLinkActive : themeStyles.navLink
             }`}
           >
@@ -255,7 +263,7 @@ export const Header: React.FC<HeaderProps> = ({
                 style={{ willChange: 'transform' }}
               />
             )}
-          </button>
+          </a>
 
           {/* Products Dropdown Tab */}
           <div
@@ -263,12 +271,14 @@ export const Header: React.FC<HeaderProps> = ({
             onMouseEnter={() => setIsProductsHovered(true)}
             onMouseLeave={() => setIsProductsHovered(false)}
           >
-            <button
-              onClick={() => {
+            <a
+              href="/products"
+              onClick={(e) => {
+                e.preventDefault();
                 onSelectTab?.('PRODUCTS');
                 onOpenProductsDropdown?.();
               }}
-              className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-colors flex items-center gap-1.5 ${
+              className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-colors flex items-center gap-1.5 no-underline cursor-pointer ${
                 activeTab === 'PRODUCTS' ? themeStyles.navLinkActive : themeStyles.navLink
               }`}
             >
@@ -286,7 +296,7 @@ export const Header: React.FC<HeaderProps> = ({
                   style={{ willChange: 'transform' }}
                 />
               )}
-            </button>
+            </a>
 
             {/* Desktop Products Dropdown Menu with Butter-Smooth Entrance/Exit */}
             <AnimatePresence>
@@ -311,9 +321,11 @@ export const Header: React.FC<HeaderProps> = ({
                     </span>
                   </div>
                   {categories.map((cat) => (
-                    <button
+                    <a
                       key={cat.id}
-                      onClick={() => {
+                      href={`/category/${cat.id}`}
+                      onClick={(e) => {
+                        e.preventDefault();
                         setIsProductsHovered(false);
                         if (onSelectCategory) {
                           onSelectCategory(cat.id);
@@ -321,7 +333,7 @@ export const Header: React.FC<HeaderProps> = ({
                           onSelectTab?.('PRODUCTS');
                         }
                       }}
-                      className="w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center justify-between group/item transition-colors"
+                      className="w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center justify-between group/item transition-colors no-underline cursor-pointer"
                     >
                       <div>
                         <p className="text-xs font-bold text-slate-800 group-hover/item:text-[#E0183D] transition-colors">
@@ -331,18 +343,20 @@ export const Header: React.FC<HeaderProps> = ({
                           {cat.subtitle || 'Switches & controls'}
                         </p>
                       </div>
-                    </button>
+                    </a>
                   ))}
                   <div className="pt-2 mt-1 border-t border-slate-100 px-3">
-                    <button
-                      onClick={() => {
+                    <a
+                      href="/products"
+                      onClick={(e) => {
+                        e.preventDefault();
                         setIsProductsHovered(false);
                         onSelectTab?.('PRODUCTS');
                       }}
-                      className="w-full text-center py-1.5 rounded-lg bg-slate-900 hover:bg-[#E0183D] active:scale-98 text-white text-[11px] font-bold transition-all shadow-sm"
+                      className="block w-full text-center py-1.5 rounded-lg bg-slate-900 hover:bg-[#E0183D] active:scale-98 text-white text-[11px] font-bold transition-all shadow-sm no-underline cursor-pointer"
                     >
                       View All Products ({categories.length}+ Ranges)
-                    </button>
+                    </a>
                   </div>
                 </motion.div>
               )}
@@ -350,9 +364,13 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Contact Tab */}
-          <button
-            onClick={() => onSelectTab?.('CONTACT')}
-            className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-colors ${
+          <a
+            href="/contact"
+            onClick={(e) => {
+              e.preventDefault();
+              onSelectTab?.('CONTACT');
+            }}
+            className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-colors no-underline cursor-pointer ${
               activeTab === 'CONTACT' ? themeStyles.navLinkActive : themeStyles.navLink
             }`}
           >
@@ -365,12 +383,16 @@ export const Header: React.FC<HeaderProps> = ({
                 style={{ willChange: 'transform' }}
               />
             )}
-          </button>
+          </a>
 
           {/* Why Choose Us Tab */}
-          <button
-            onClick={() => onSelectTab?.('WHY_US')}
-            className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-colors ${
+          <a
+            href="/why-us"
+            onClick={(e) => {
+              e.preventDefault();
+              onSelectTab?.('WHY_US');
+            }}
+            className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-colors no-underline cursor-pointer ${
               activeTab === 'WHY_US' ? themeStyles.navLinkActive : themeStyles.navLink
             }`}
           >
@@ -383,12 +405,16 @@ export const Header: React.FC<HeaderProps> = ({
                 style={{ willChange: 'transform' }}
               />
             )}
-          </button>
+          </a>
 
           {/* Catalogue Tab */}
-          <button
-            onClick={() => onSelectTab?.('CATALOGUE')}
-            className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-colors ${
+          <a
+            href="/catalogue"
+            onClick={(e) => {
+              e.preventDefault();
+              onSelectTab?.('CATALOGUE');
+            }}
+            className={`relative px-3.5 py-2 rounded-xl text-[14px] xl:text-[15px] font-bold transition-colors no-underline cursor-pointer ${
               activeTab === 'CATALOGUE' ? themeStyles.navLinkActive : themeStyles.navLink
             }`}
           >
@@ -401,7 +427,7 @@ export const Header: React.FC<HeaderProps> = ({
                 style={{ willChange: 'transform' }}
               />
             )}
-          </button>
+          </a>
         </nav>
 
         {/* Right: CTA Buttons (Call Sales & WhatsApp) */}

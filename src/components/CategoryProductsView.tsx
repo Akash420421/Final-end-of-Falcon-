@@ -86,9 +86,13 @@ export const CategoryProductsView: React.FC<CategoryProductsViewProps> = ({
 
       {/* Category Pills Selector with Shared Layout Indicator */}
       <div className="flex items-center gap-1.5 lg:gap-2.5 overflow-x-auto no-scrollbar pb-1 pt-0.5 smooth-scroll">
-        <button
-          onClick={() => onSelectCategory(null)}
-          className={`relative shrink-0 px-3 lg:px-4 py-1.5 lg:py-2.5 rounded-xl lg:rounded-2xl text-[11px] lg:text-[13px] font-bold flex items-center gap-1.5 lg:gap-2 border transition-colors ${
+        <a
+          href="/products"
+          onClick={(e) => {
+            e.preventDefault();
+            onSelectCategory(null);
+          }}
+          className={`relative shrink-0 px-3 lg:px-4 py-1.5 lg:py-2.5 rounded-xl lg:rounded-2xl text-[11px] lg:text-[13px] font-bold flex items-center gap-1.5 lg:gap-2 border transition-colors no-underline cursor-pointer ${
             selectedCategoryId === null
               ? 'text-white border-[#101124]'
               : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
@@ -107,15 +111,19 @@ export const CategoryProductsView: React.FC<CategoryProductsViewProps> = ({
             <Grid className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
             <span>All Products</span>
           </span>
-        </button>
+        </a>
 
         {categories.map((cat) => {
           const isSelected = selectedCategoryId === cat.id;
           return (
-            <button
+            <a
               key={cat.id}
-              onClick={() => onSelectCategory(cat.id)}
-              className={`relative shrink-0 px-3 lg:px-4 py-1.5 lg:py-2.5 rounded-xl lg:rounded-2xl text-[11px] lg:text-[13px] font-bold flex items-center gap-1.5 lg:gap-2 border transition-colors ${
+              href={`/category/${cat.id}`}
+              onClick={(e) => {
+                e.preventDefault();
+                onSelectCategory(cat.id);
+              }}
+              className={`relative shrink-0 px-3 lg:px-4 py-1.5 lg:py-2.5 rounded-xl lg:rounded-2xl text-[11px] lg:text-[13px] font-bold flex items-center gap-1.5 lg:gap-2 border transition-colors no-underline cursor-pointer ${
                 isSelected
                   ? 'text-white border-[#E0183D]'
                   : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
@@ -134,7 +142,7 @@ export const CategoryProductsView: React.FC<CategoryProductsViewProps> = ({
                 {getCategoryIcon(cat.iconName)}
                 <span>{cat.title}</span>
               </span>
-            </button>
+            </a>
           );
         })}
       </div>

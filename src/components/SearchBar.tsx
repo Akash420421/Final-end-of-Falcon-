@@ -180,16 +180,17 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 lg:gap-3">
               {popularCategories.map((cat) => (
-                <button
+                <a
                   key={cat.id}
-                  type="button"
-                  onClick={() => {
+                  href={cat.id === 'all' ? '/products' : `/category/${cat.id}`}
+                  onClick={(e) => {
+                    e.preventDefault();
                     if (onSelectCategory) {
                       onSelectCategory(cat.id);
                     }
                     setIsFocused(false);
                   }}
-                  className="p-2 lg:p-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-left transition flex items-center justify-between group"
+                  className="p-2 lg:p-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-left transition flex items-center justify-between group no-underline cursor-pointer"
                 >
                   <div>
                     <span className="text-[11px] lg:text-[13px] font-bold text-slate-800 group-hover:text-[#E0183D] block leading-tight">
@@ -200,7 +201,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                     </span>
                   </div>
                   <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#E0183D] transition" />
-                </button>
+                </a>
               ))}
             </div>
           </div>

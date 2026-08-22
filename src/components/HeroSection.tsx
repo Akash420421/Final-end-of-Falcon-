@@ -72,22 +72,29 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
             {/* Action Buttons: View Catalogue (Red) & View Products (Dark) */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 w-fit mt-1">
-              <button
-                type="button"
-                onClick={onViewCatalogue || onViewProducts}
-                className="bg-[#E0183D] hover:bg-[#c01233] text-white font-bold text-[12px] sm:text-[14px] px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl shadow-md shadow-red-950/40 flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer whitespace-nowrap"
+              <a
+                href="/catalogue"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (onViewCatalogue) onViewCatalogue();
+                  else onViewProducts();
+                }}
+                className="bg-[#E0183D] hover:bg-[#c01233] text-white font-bold text-[12px] sm:text-[14px] px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl shadow-md shadow-red-950/40 flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer whitespace-nowrap no-underline"
               >
                 <span>View Catalogue</span>
                 <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
-              </button>
+              </a>
 
-              <button
-                type="button"
-                onClick={onViewProducts}
-                className="bg-[#14172C] hover:bg-[#1f2343] text-white font-medium text-[12px] sm:text-[14px] px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl border border-slate-700/80 shadow-sm flex items-center justify-center transition active:scale-95 cursor-pointer whitespace-nowrap"
+              <a
+                href="/products"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onViewProducts();
+                }}
+                className="bg-[#14172C] hover:bg-[#1f2343] text-white font-medium text-[12px] sm:text-[14px] px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl border border-slate-700/80 shadow-sm flex items-center justify-center transition active:scale-95 cursor-pointer whitespace-nowrap no-underline"
               >
                 <span>View Products</span>
-              </button>
+              </a>
             </div>
           </div>
 

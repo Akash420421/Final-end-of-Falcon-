@@ -98,10 +98,14 @@ export const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
               cat.bgColor.startsWith('radial-gradient'));
 
           return (
-            <div
+            <a
               key={cat.id}
-              onClick={() => onSelectCategory(cat.id)}
-              className={`group snap-start shrink-0 w-[82%] sm:w-[260px] lg:w-full rounded-2xl lg:rounded-2xl p-3 lg:p-3.5 cursor-pointer shadow-md category-card-gpu relative overflow-hidden flex flex-col justify-between border border-white/10 ${
+              href={`/category/${cat.id}`}
+              onClick={(e) => {
+                e.preventDefault();
+                onSelectCategory(cat.id);
+              }}
+              className={`group snap-start shrink-0 w-[82%] sm:w-[260px] lg:w-full rounded-2xl lg:rounded-2xl p-3 lg:p-3.5 cursor-pointer shadow-md category-card-gpu relative overflow-hidden flex flex-col justify-between border border-white/10 no-underline ${
                 isSelected ? 'ring-2 ring-[#E0183D] ring-offset-2' : ''
               } ${!isCustomBg ? (cat.bgColor || 'bg-gradient-to-br from-[#101124] to-[#1E203C]') : ''} text-white hover:shadow-xl active:scale-98`}
               style={{
@@ -153,7 +157,7 @@ export const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
                   <ArrowRight className="w-3.5 h-3.5 lg:w-4 lg:h-4 stroke-[2.5]" />
                 </div>
               </div>
-            </div>
+            </a>
           );
         })}
       </div>

@@ -1,6 +1,5 @@
 User-agent: *
 Allow: /
 
-# Sitemaps
-Sitemap: https://vermaenterprises.in/sitemap.xml
-Sitemap: https://falconelectrics.in/sitemap.xml
+# Official Sitemap
+Sitemap: https://falconelectrics.com/sitemap.xml

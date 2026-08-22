@@ -39,13 +39,17 @@ export const FeaturedProducts: React.FC<FeaturedProductsProps> = ({
           </h2>
         </div>
 
-        <button
-          onClick={onViewAllProducts}
-          className="text-[#E0183D] font-bold text-[12px] lg:text-[15px] flex items-center gap-1 lg:gap-1.5 hover:underline shrink-0"
+        <a
+          href="/products"
+          onClick={(e) => {
+            e.preventDefault();
+            onViewAllProducts();
+          }}
+          className="text-[#E0183D] font-bold text-[12px] lg:text-[15px] flex items-center gap-1 lg:gap-1.5 hover:underline shrink-0 no-underline cursor-pointer"
         >
           <span>View All Products</span>
           <ArrowRight className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-        </button>
+        </a>
       </div>
 
       {/* If search or filter returns empty */}

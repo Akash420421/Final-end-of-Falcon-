@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Metallic Navy Gradient for V and E -->
+    <linearGradient id="veNavy" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#234E85"/>
+      <stop offset="35%" stop-color="#143460"/>
+      <stop offset="70%" stop-color="#0A1E3C"/>
+      <stop offset="100%" stop-color="#051228"/>
+    </linearGradient>
+
+    <!-- Metallic Highlight for Letters -->
+    <linearGradient id="veHighlight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4A7BB8" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#1A3F74" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#091C36" stop-opacity="0.9"/>
+    </linearGradient>
+
+    <!-- Top Navy Outer Swoosh Gradient -->
+    <linearGradient id="swooshNavy" x1="0%" y1="0%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#1E4477"/>
+      <stop offset="40%" stop-color="#2E609E"/>
+      <stop offset="75%" stop-color="#153664"/>
+      <stop offset="100%" stop-color="#0B1E38"/>
+    </linearGradient>
+
+    <!-- Inner Chrome Silver Swoosh Gradient -->
+    <linearGradient id="swooshSilver" x1="0%" y1="0%" x2="100%" y2="60%">
+      <stop offset="0%" stop-color="#5E6773"/>
+      <stop offset="25%" stop-color="#9BA5B3"/>
+      <stop offset="50%" stop-color="#E2E8F0"/>
+      <stop offset="75%" stop-color="#8E99A8"/>
+      <stop offset="100%" stop-color="#47515F"/>
+    </linearGradient>
+
+    <!-- Shadow filter for 3D depth -->
+    <filter id="dropShadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="2" dy="4" stdDeviation="4" flood-color="#051224" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Clean Transparent Canvas -->
+  <g filter="url(#dropShadow)">
+    <!-- Outer Navy Blue Swoosh Arc -->
+    <path d="M 64 240 C 60 170 120 100 240 100 C 370 100 460 170 460 300 C 460 350 435 385 385 400 C 410 375 425 340 422 295 C 415 195 340 135 235 135 C 135 135 88 185 82 245 Z" 
+          fill="url(#swooshNavy)" />
+
+    <!-- Inner Metallic Silver Chrome Swoosh Arc -->
+    <path d="M 90 220 C 105 160 165 125 255 125 C 360 125 430 185 430 290 C 430 335 410 365 375 380 C 395 360 405 330 402 290 C 395 205 335 152 248 152 C 160 152 110 185 96 225 Z" 
+          fill="url(#swooshSilver)" />
+
+    <!-- Letter 'V' (Classic High-Contrast Serif Styling) -->
+    <path d="M 125 210 L 180 210 C 172 225 165 240 165 255 L 202 360 L 255 210 L 235 210 L 235 202 L 290 202 L 290 210 L 270 210 L 198 395 L 182 395 L 115 218 L 105 210 Z"
+          fill="url(#veNavy)" />
+    <!-- Letter 'V' Specular Inset -->
+    <path d="M 125 210 L 180 210 C 172 225 165 240 165 255 L 202 360 L 255 210 L 235 210 L 235 202 L 290 202 L 290 210 L 270 210 L 198 395 L 182 395 L 115 218 L 105 210 Z"
+          fill="url(#veHighlight)" opacity="0.4" />
+
+    <!-- Letter 'E' (Classic High-Contrast Serif Styling) -->
+    <path d="M 265 260 L 340 260 L 340 278 L 290 278 L 290 318 L 332 318 L 332 334 L 290 334 L 290 380 L 348 380 L 348 400 L 248 400 L 248 260 Z M 248 260 L 340 260 L 340 278 L 272 278 L 272 390 L 248 390 Z"
+          fill="url(#veNavy)" />
+    <!-- Letter 'E' Main Upright & Arms -->
+    <path d="M 252 260 L 345 260 L 345 276 C 330 276 320 278 285 278 L 285 318 L 332 318 L 332 334 L 285 334 L 285 382 C 320 382 335 382 352 382 L 355 400 L 242 400 L 242 385 C 255 385 262 380 262 365 L 262 280 C 262 268 255 260 242 260 Z"
+          fill="url(#veNavy)" />
+    <!-- Letter 'E' Specular Inset -->
+    <path d="M 252 260 L 345 260 L 345 276 C 330 276 320 278 285 278 L 285 318 L 332 318 L 332 334 L 285 334 L 285 382 C 320 382 335 382 352 382 L 355 400 L 242 400 L 242 385 C 255 385 262 380 262 365 L 262 280 C 262 268 255 260 242 260 Z"
+          fill="url(#veHighlight)" opacity="0.3" />
+  </g>
+</svg>

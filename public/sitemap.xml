@@ -3,41 +3,73 @@
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <!-- Homepage & Brand -->
   <url>
-    <loc>https://vermaenterprises.in/</loc>
-    <lastmod>2026-08-19</lastmod>
+    <loc>https://falconelectrics.com/</loc>
+    <lastmod>2026-08-22</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
-  
-  <!-- Products & Categories -->
+
+  <!-- Products Catalog -->
   <url>
-    <loc>https://vermaenterprises.in/#categories-section</loc>
-    <lastmod>2026-08-19</lastmod>
+    <loc>https://falconelectrics.com/products</loc>
+    <lastmod>2026-08-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
-  
-  <!-- B2B Wholesale & Dealer Enquiry -->
+
+  <!-- Winter Switches Category -->
   <url>
-    <loc>https://vermaenterprises.in/#b2b-wholesale</loc>
-    <lastmod>2026-08-19</lastmod>
+    <loc>https://falconelectrics.com/category/winter</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Summer Switches & Regulators Category -->
+  <url>
+    <loc>https://falconelectrics.com/category/summer</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Rocker Switches Category -->
+  <url>
+    <loc>https://falconelectrics.com/category/rocker</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Digital Technical Catalogue -->
+  <url>
+    <loc>https://falconelectrics.com/catalogue</loc>
+    <lastmod>2026-08-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 
-  <!-- Digital Product Catalogue -->
+  <!-- About Verma Enterprises & Falcon Electrics -->
   <url>
-    <loc>https://vermaenterprises.in/#catalogue-section</loc>
-    <lastmod>2026-08-19</lastmod>
-    <changefreq>weekly</changefreq>
+    <loc>https://falconelectrics.com/about</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
-  
-  <!-- Factory & Contact Information -->
+
+  <!-- Why Choose Us / Quality Assurance -->
   <url>
-    <loc>https://vermaenterprises.in/#contact-section</loc>
-    <lastmod>2026-08-19</lastmod>
+    <loc>https://falconelectrics.com/why-us</loc>
+    <lastmod>2026-08-22</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Factory Contact & Wholesale Inquiry -->
+  <url>
+    <loc>https://falconelectrics.com/contact</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
   </url>
 </urlset>

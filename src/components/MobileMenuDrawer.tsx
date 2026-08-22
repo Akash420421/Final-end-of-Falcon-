@@ -24,13 +24,13 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({
 }) => {
   const { companyDetails, isAdminLoggedIn } = useFalconStore();
 
-  const menuItems: { id: NavigationTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { id: 'HOME', label: 'Home Page', icon: Home },
-    { id: 'ABOUT', label: 'About Falcon Electrics', icon: Info },
-    { id: 'PRODUCTS', label: 'Explore Products Range', icon: Grid },
-    { id: 'CATALOGUE', label: 'View Product Catalogue', icon: BookOpen },
-    { id: 'WHY_US', label: 'Why Partner With Us', icon: Award },
-    { id: 'CONTACT', label: 'Contact Us & Factory Location', icon: Mail },
+  const menuItems: { id: NavigationTab; label: string; href: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { id: 'HOME', label: 'Home Page', href: '/', icon: Home },
+    { id: 'ABOUT', label: 'About Falcon Electrics', href: '/about', icon: Info },
+    { id: 'PRODUCTS', label: 'Explore Products Range', href: '/products', icon: Grid },
+    { id: 'CATALOGUE', label: 'View Product Catalogue', href: '/catalogue', icon: BookOpen },
+    { id: 'WHY_US', label: 'Why Partner With Us', href: '/why-us', icon: Award },
+    { id: 'CONTACT', label: 'Contact Us & Factory Location', href: '/contact', icon: Mail },
   ];
 
   return (
@@ -102,14 +102,16 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({
                   const isActive = activeTab === item.id;
                   const Icon = item.icon;
                   return (
-                    <motion.button
+                    <motion.a
                       key={item.id}
+                      href={item.href}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.preventDefault();
                         onSelectTab(item.id);
                         onClose();
                       }}
-                      className={`relative w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between text-[13px] font-semibold transition-colors group ${
+                      className={`relative w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between text-[13px] font-semibold transition-colors group no-underline cursor-pointer ${
                         isActive
                           ? 'text-white font-bold'
                           : 'hover:bg-white/5 text-slate-200'
@@ -140,7 +142,7 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({
                           isActive ? 'text-white opacity-90' : 'opacity-50 text-slate-400 group-hover:translate-x-0.5 group-hover:opacity-80'
                         }`}
                       />
-                    </motion.button>
+                    </motion.a>
                   );
                 })}
               </div>
