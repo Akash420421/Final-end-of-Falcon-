@@ -42,8 +42,12 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [selectedRatio, setSelectedRatio] = useState<number | null>(initialAspectRatio);
   const [isDragging, setIsDragging] = useState(false);
+  const [isPinching, setIsPinching] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const pinchStartDistRef = useRef<number>(0);
+  const pinchStartZoomRef = useRef<number>(1);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -59,6 +63,8 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
       setPosition({ x: 0, y: 0 });
       setSelectedRatio(initialAspectRatio !== undefined ? initialAspectRatio : 1);
       setImageLoaded(false);
+      setIsDragging(false);
+      setIsPinching(false);
     }
   }, [isOpen, imageSrc, initialAspectRatio]);
 
@@ -70,7 +76,7 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
     setPosition({ x: 0, y: 0 });
   };
 
-  // Mouse & Touch Drag Handlers
+  // Mouse & Touch Drag / Pinch Handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsDragging(true);
@@ -95,42 +101,65 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
       setIsDragging(true);
+      setIsPinching(false);
       const touch = e.touches[0];
       setDragStart({ x: touch.clientX - position.x, y: touch.clientY - position.y });
+    } else if (e.touches.length === 2) {
+      setIsDragging(false);
+      setIsPinching(true);
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      pinchStartDistRef.current = Math.hypot(dx, dy);
+      pinchStartZoomRef.current = zoom;
     }
   };
 
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
-      if (!isDragging || e.touches.length !== 1) return;
-      const touch = e.touches[0];
-      setPosition({
-        x: touch.clientX - dragStart.x,
-        y: touch.clientY - dragStart.y,
-      });
+      if (e.touches.length === 1 && isDragging) {
+        const touch = e.touches[0];
+        setPosition({
+          x: touch.clientX - dragStart.x,
+          y: touch.clientY - dragStart.y,
+        });
+      } else if (e.touches.length === 2 && isPinching && pinchStartDistRef.current > 0) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const currentDist = Math.hypot(dx, dy);
+        const scaleChange = currentDist / pinchStartDistRef.current;
+        const nextZoom = Math.min(Math.max(0.5, pinchStartZoomRef.current * scaleChange), 3.5);
+        setZoom(Number(nextZoom.toFixed(2)));
+      }
     },
-    [isDragging, dragStart]
+    [isDragging, isPinching, dragStart]
   );
 
-  const handleTouchEnd = useCallback(() => {
-    setIsDragging(false);
+  const handleTouchEnd = useCallback((e: TouchEvent) => {
+    if (e.touches.length === 0) {
+      setIsDragging(false);
+      setIsPinching(false);
+    } else if (e.touches.length === 1) {
+      setIsPinching(false);
+    }
   }, []);
 
   // Global mouse/touch move and up listeners
   useEffect(() => {
-    if (isDragging) {
+    if (isDragging || isPinching) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
-      window.addEventListener('touchmove', handleTouchMove);
+      window.addEventListener('touchmove', handleTouchMove, { passive: false });
       window.addEventListener('touchend', handleTouchEnd);
+      window.addEventListener('touchcancel', handleTouchEnd);
     }
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchcancel', handleTouchEnd);
     };
-  }, [isDragging, handleMouseMove, handleMouseUp, handleTouchMove, handleTouchEnd]);
+  }, [isDragging, isPinching, handleMouseMove, handleMouseUp, handleTouchMove, handleTouchEnd]);
 
   // Wheel zoom
   const handleWheel = (e: React.WheelEvent) => {
@@ -242,7 +271,10 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-fade-in select-none">
+    <div
+      className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-fade-in select-none cropper-touch-area"
+      data-cropper-touch-area="true"
+    >
       <div className="bg-slate-900 border border-slate-700/80 rounded-3xl max-w-xl w-full flex flex-col shadow-2xl overflow-hidden max-h-[95vh]">
         {/* Header Bar */}
         <div className="px-4 py-3.5 sm:px-6 sm:py-4 bg-[#101124] border-b border-slate-800 flex items-center justify-between">
@@ -280,7 +312,9 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
 
         {/* Interactive Cropper Viewport */}
         <div
-          className="relative bg-slate-950 flex-1 min-h-[300px] sm:min-h-[360px] flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing p-4"
+          className="relative bg-slate-950 flex-1 min-h-[300px] sm:min-h-[360px] flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing p-4 cropper-touch-area"
+          data-cropper-touch-area="true"
+          style={{ touchAction: 'none' }}
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
           onTouchStart={handleTouchStart}
