@@ -75,12 +75,12 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     'Cooler Speed Switch',
   ];
 
-  // Popular Categories quick picks
+  // Popular Categories quick picks: Winter, Summer, Rocker, and All Switches
   const popularCategories = [
+    { id: 'winter', name: 'Winter Switches', tag: 'Heater & Geyser' },
     { id: 'summer', name: 'Summer Switches', tag: 'Fan & Cooler' },
-    { id: 'winter', name: 'Winter Switches', tag: 'Heater 16A' },
-    { id: 'modular', name: 'Modular Range', tag: 'Sleek Plates' },
-    { id: 'accessories', name: 'Protection & MCB', tag: '32A DP' },
+    { id: 'rocker', name: 'Rocker Switches', tag: '1-Way & 2-Way' },
+    { id: 'all', name: 'All Switches', tag: 'Complete Range' },
   ];
 
   // Close dropdown on outside click

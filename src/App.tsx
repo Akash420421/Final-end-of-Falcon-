@@ -374,6 +374,13 @@ function MainContent() {
             <SearchBar
               searchQuery={searchQuery}
               onSearchChange={(q) => setSearchQuery(q)}
+              onSelectCategory={(catId) => {
+                if (catId === 'all') {
+                  handleSelectCategory(null);
+                } else {
+                  handleSelectCategory(catId);
+                }
+              }}
               onSearchSubmit={(e) => {
                 e.preventDefault();
                 if (location.pathname === '/products') {
