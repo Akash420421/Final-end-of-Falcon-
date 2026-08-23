@@ -57,20 +57,6 @@ export const Footer: React.FC<FooterProps> = ({ onOpenWhatsApp, onOpenPhoneModal
           </address>
         </div>
 
-        {/* Quick Crawlable Internal Navigation Links */}
-        <nav aria-label="Footer Quick Links" className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-2 border-t border-white/10 text-[12px] lg:text-[13px] text-slate-300">
-          <a href="/" className="hover:text-white hover:underline transition-colors no-underline">Home</a>
-          <span className="text-slate-600">•</span>
-          <a href="/about" className="hover:text-white hover:underline transition-colors no-underline">About Us</a>
-          <span className="text-slate-600">•</span>
-          <a href="/products" className="hover:text-white hover:underline transition-colors no-underline">Product Catalog</a>
-          <span className="text-slate-600">•</span>
-          <a href="/catalogue" className="hover:text-white hover:underline transition-colors no-underline">Catalogue PDF</a>
-          <span className="text-slate-600">•</span>
-          <a href="/why-us" className="hover:text-white hover:underline transition-colors no-underline">Why Choose Us</a>
-          <span className="text-slate-600">•</span>
-          <a href="/contact" className="hover:text-white hover:underline transition-colors no-underline">Factory Contact</a>
-        </nav>
 
         {/* Official Social Links with Real Brand Logos */}
         <div className="flex items-center justify-between border-t border-white/10 pt-4 lg:pt-6">
