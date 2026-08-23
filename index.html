@@ -228,8 +228,8 @@
     </script>
   </head>
   <body class="bg-gray-100 font-sans text-gray-900 antialiased selection:bg-red-500 selection:text-white">
-    <div id="root">
-      <!-- Semantic Static HTML5 for Search Engine Crawlers (Googlebot / Bingbot) -->
+    <!-- Semantic Static HTML5 for Search Engine Crawlers & Non-JS Clients (Googlebot / Bingbot) -->
+    <noscript>
       <header style="background-color:#101124;color:#ffffff;padding:16px 24px;border-bottom:1px solid rgba(255,255,255,0.1);">
         <div style="max-width:1200px;margin:0 auto;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:16px;">
           <div>
@@ -379,7 +379,8 @@
         <p style="margin:0 0 8px 0;">© 2026 Verma Enterprises (Falcon Electrics). All Rights Reserved.</p>
         <p style="margin:0;">109-A/D, Block A, Vikas Nagar Extn, Uttam Nagar, New Delhi 110059, India</p>
       </footer>
-    </div>
+    </noscript>
+    <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
