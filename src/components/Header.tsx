@@ -86,20 +86,39 @@ export const Header: React.FC<HeaderProps> = ({
 
   const themeStyles = getThemeClasses();
 
+  const lastTapTimestampRef = useRef(0);
+
   const handleLogoClick = () => {
-    // Increment click count for 10-click admin secret trigger
+    const now = Date.now();
+    // Prevent synthetic duplicate click right after touchend
+    if (now - lastTapTimestampRef.current < 70) return;
+    lastTapTimestampRef.current = now;
+
     clickCountRef.current += 1;
 
     if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
 
+    // Haptic feedback on mobile when tapping secret sequence
+    if (clickCountRef.current >= 5 && typeof navigator !== 'undefined' && navigator.vibrate) {
+      try {
+        navigator.vibrate(12);
+      } catch {}
+    }
+
+    // 10 continuous taps triggers the admin popup
     if (clickCountRef.current >= 10) {
       clickCountRef.current = 0;
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try {
+          navigator.vibrate([25, 40, 25]);
+        } catch {}
+      }
       onAdminTrigger();
     } else {
-      // Reset clicks after 4 seconds of inactivity
+      // Reset clicks after 5 seconds of inactivity
       clickTimerRef.current = setTimeout(() => {
         clickCountRef.current = 0;
-      }, 4000);
+      }, 5000);
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -121,11 +140,12 @@ export const Header: React.FC<HeaderProps> = ({
             <Menu className="w-5 h-5" />
           </button>
 
-          {/* Falcon Logo / Custom Header Brand Banner (10 Clicks triggers Admin Login) */}
+          {/* Falcon Logo / Custom Header Brand Banner (10 Rapid Taps triggers Admin Login) */}
           <div
-            className="flex items-center gap-2.5 lg:gap-3.5 cursor-pointer select-none group py-1"
+            data-admin-trigger="true"
+            className="flex items-center gap-2.5 lg:gap-3.5 cursor-pointer select-none group py-1 touch-manipulation active:opacity-90"
             onClick={handleLogoClick}
-            title={`${companyDetails.brandName || 'Falcon Electrics'} (Click to scroll top)`}
+            title={companyDetails.brandName || 'Falcon Electrics'}
           >
             {/* Case 1: Custom Full Combined Header Brand Banner (Image containing custom logo + stylized colored name) */}
             {companyDetails.customHeaderBannerUrl ? (

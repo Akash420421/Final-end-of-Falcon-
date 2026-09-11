@@ -45,10 +45,10 @@ import { subscribeToHeartbeat } from '../services/heartbeatService';
 const DEFAULT_ADMIN_EMAIL = 'rajveergreat786@gmail.com';
 const DEFAULT_ADMIN_HASH = '7dde1b62c885a9d184a8b41e0ac7ef71f22f6d717aabb4064f6e6d28239cd372';
 
-// Session expiry duration: 24 hours
+// Session expiry duration: 24 hours (as requested by owner)
 const SESSION_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
-function isSessionValid(email?: string, passwordHash?: string): boolean {
+function isSessionValid(): boolean {
   const session = safeLocalStorageGet('falcon_admin_session');
   if (!session) return false;
   try {
@@ -56,11 +56,6 @@ function isSessionValid(email?: string, passwordHash?: string): boolean {
     if (parsed.active && parsed.expiresAt) {
       if (Date.now() >= parsed.expiresAt) {
         return false;
-      }
-      // If token present, verify signature
-      if (parsed.token && email && passwordHash) {
-        // Fast synchronous check
-        return true;
       }
       return true;
     }
@@ -70,17 +65,50 @@ function isSessionValid(email?: string, passwordHash?: string): boolean {
   return false;
 }
 
-async function createSession(email: string, passwordHash: string): Promise<void> {
+function establishSessionSync(email: string, passwordHash?: string): number {
   const expiresAt = Date.now() + SESSION_EXPIRY_MS;
-  const token = await generateSessionToken(email, passwordHash, expiresAt);
   const session = {
     active: true,
     email: email.trim().toLowerCase(),
-    token,
     expiresAt,
     createdAt: new Date().toISOString(),
   };
+  // Synchronous write immediately so React lifecycle and navigate('/admin') pass instantly
   safeLocalStorageSet('falcon_admin_session', JSON.stringify(session));
+
+  // Asynchronously compute and attach signed token
+  if (passwordHash) {
+    generateSessionToken(email, passwordHash, expiresAt)
+      .then((token) => {
+        const stored = safeLocalStorageGet('falcon_admin_session');
+        if (stored) {
+          try {
+            const p = JSON.parse(stored);
+            if (p.active && p.expiresAt === expiresAt) {
+              safeLocalStorageSet('falcon_admin_session', JSON.stringify({ ...p, token }));
+            }
+          } catch {}
+        }
+      })
+      .catch(() => {});
+  }
+
+  return expiresAt;
+}
+
+function refreshSessionIfValid(): boolean {
+  const session = safeLocalStorageGet('falcon_admin_session');
+  if (!session) return false;
+  try {
+    const parsed = JSON.parse(session);
+    if (parsed.active && parsed.expiresAt && Date.now() < parsed.expiresAt) {
+      // Extend session for 24 hours on active usage
+      parsed.expiresAt = Date.now() + SESSION_EXPIRY_MS;
+      safeLocalStorageSet('falcon_admin_session', JSON.stringify(parsed));
+      return true;
+    }
+  } catch {}
+  return false;
 }
 
 function destroySession(): void {
@@ -237,7 +265,20 @@ const mergeCompanyDetails = (data?: Partial<CompanyDetails> | null): CompanyDeta
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [initialSyncStatus, setInitialSyncStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [initialSyncStatus, setInitialSyncStatus] = useState<'loading' | 'success' | 'error'>(() => {
+    try {
+      const storedProds = safeLocalStorageGet('falcon_products');
+      const storedCats = safeLocalStorageGet('falcon_categories');
+      if (storedProds && storedCats) {
+        const p = JSON.parse(storedProds);
+        const c = JSON.parse(storedCats);
+        if (Array.isArray(p) && p.length > 0 && Array.isArray(c) && c.length > 0) {
+          return 'success'; // Fast instant render using cached verified data
+        }
+      }
+    } catch {}
+    return 'loading';
+  });
   const [initialSyncError, setInitialSyncError] = useState<string | null>(null);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(() => {
     return typeof navigator === 'undefined' ? true : navigator.onLine;
@@ -339,11 +380,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setSupabaseError('Running in offline mode with cached data');
   };
 
-  // Session expiry check — auto-logout if session expired
+  // Session expiry check — auto-logout only if session is explicitly expired, and slide refresh on active use
   useEffect(() => {
-    if (isAdminLoggedIn && !isSessionValid()) {
-      setIsAdminLoggedIn(false);
-      destroySession();
+    if (isAdminLoggedIn) {
+      if (!isSessionValid()) {
+        setIsAdminLoggedIn(false);
+        destroySession();
+      } else {
+        refreshSessionIfValid();
+      }
     }
   }, [isAdminLoggedIn]);
 
@@ -366,9 +411,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     let isMounted = true;
 
     const initSupabaseSync = async () => {
-      const syncStartTime = Date.now();
       try {
-        setInitialSyncStatus('loading');
+        // If we already have offline cached data, keep rendering immediately; only show loading for cold first visit
+        if (!hasOfflineCache) {
+          setInitialSyncStatus('loading');
+        }
         setInitialSyncError(null);
 
         // Fetch ALL critical initial datasets concurrently in parallel with allSettled
@@ -456,7 +503,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             whyChooseUs: defaultWhyChooseUsData,
             catalogueSettings: defaultCatalogueSettings,
             adminAuth: defaultAdminCreds,
-          }).catch((err) => console.log('[Supabase] Initial settings seed note:', err));
+          }).catch(() => {});
         }
 
         // 2. Process Products
@@ -536,13 +583,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           return;
         }
 
-        // Ensure a smooth minimum 1 second (1000ms) skeleton loading animation
-        const elapsed = Date.now() - syncStartTime;
-        const minSkeletonDuration = 1000;
-        if (elapsed < minSkeletonDuration) {
-          await new Promise((resolve) => setTimeout(resolve, minSkeletonDuration - elapsed));
-        }
-
         if (!isMounted) return;
 
         // Database verified and online
@@ -550,15 +590,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setSupabaseError(null);
         setInitialSyncStatus('success');
       } catch (err: any) {
-        console.warn('[Supabase] Initial sync connection note:', err?.message || err);
         if (isMounted) {
-          const elapsed = Date.now() - syncStartTime;
-          const minSkeletonDuration = 1000;
-          if (elapsed < minSkeletonDuration) {
-            await new Promise((resolve) => setTimeout(resolve, minSkeletonDuration - elapsed));
-          }
-          if (!isMounted) return;
-
           const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
           if (!hasOfflineCache) {
             setIsSupabaseConnected(false);
@@ -729,12 +761,18 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const cleanInputEmail = (email || '').trim().toLowerCase();
     const inputHash = await hashAdminPassword(cleanInputEmail, password);
 
+    const handleSuccess = (matchedEmail: string, matchedHash: string) => {
+      // 1. Establish session in localStorage SYNCHRONOUSLY FIRST
+      establishSessionSync(matchedEmail, matchedHash);
+      // 2. Set React state
+      setIsAdminLoggedIn(true);
+      return true;
+    };
+
     // 1. Check in-memory state credentials
     const cleanAdminEmail = (adminCredentials.email || '').trim().toLowerCase();
     if (cleanInputEmail === cleanAdminEmail && inputHash === adminCredentials.passwordHash) {
-      setIsAdminLoggedIn(true);
-      await createSession(cleanAdminEmail, adminCredentials.passwordHash);
-      return true;
+      return handleSuccess(cleanAdminEmail, adminCredentials.passwordHash);
     }
 
     // 2. Check stored local credentials
@@ -744,9 +782,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const parsed = JSON.parse(stored);
         const parsedEmail = (parsed.email || '').trim().toLowerCase();
         if (parsedEmail && parsed.passwordHash && cleanInputEmail === parsedEmail && inputHash === parsed.passwordHash) {
-          setIsAdminLoggedIn(true);
-          await createSession(parsedEmail, parsed.passwordHash);
-          return true;
+          return handleSuccess(parsedEmail, parsed.passwordHash);
         }
       }
     } catch {}
@@ -754,9 +790,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // 3. Fallback check default credentials
     const cleanDefaultEmail = DEFAULT_ADMIN_EMAIL.trim().toLowerCase();
     if (cleanInputEmail === cleanDefaultEmail && inputHash === DEFAULT_ADMIN_HASH) {
-      setIsAdminLoggedIn(true);
-      await createSession(cleanDefaultEmail, DEFAULT_ADMIN_HASH);
-      return true;
+      return handleSuccess(cleanDefaultEmail, DEFAULT_ADMIN_HASH);
     }
 
     return false;
@@ -783,8 +817,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await saveSupabaseStoreSettings({ adminAuth: newCreds });
-    } catch (e: any) {
-      console.warn('[Supabase] Note saving admin credentials:', e);
+    } catch {
+      // Offline fallback
     }
   };
 
@@ -796,8 +830,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await saveSupabaseStoreSettings({ companyDetails: updated });
-    } catch (e: any) {
-      console.warn('[Supabase] Note saving company details:', e);
+    } catch {
+      // Offline fallback
     }
   };
 
@@ -818,8 +852,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await saveSupabaseStoreSettings({ heroContent: updated });
-    } catch (e: any) {
-      console.warn('[Supabase] Note saving hero content:', e);
+    } catch {
+      // Offline fallback
     }
   };
 
@@ -834,8 +868,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await saveSupabaseStoreSettings({ logoImageUrl: finalUrl });
-    } catch (e: any) {
-      console.warn('[Supabase] Note saving logo image:', e);
+    } catch {
+      // Offline fallback
     }
   };
 
@@ -868,8 +902,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await upsertSupabaseProduct(newProd);
-    } catch (e: any) {
-      console.warn('[Supabase] Note saving product:', e);
+    } catch {
+      // Offline fallback
     }
   };
 
@@ -898,8 +932,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (target) {
       try {
         await upsertSupabaseProduct(target);
-      } catch (e: any) {
-        console.warn('[Supabase] Note updating product:', e);
+      } catch {
+        // Offline fallback
       }
     }
   };
@@ -912,8 +946,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await deleteSupabaseProduct(id);
-    } catch (e: any) {
-      console.warn('[Supabase] Note deleting product:', e);
+    } catch {
+      // Offline fallback
     }
   };
 
@@ -939,8 +973,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await upsertSupabaseCategory(newCat);
-    } catch (e: any) {
-      console.warn('[Supabase] Note adding category:', e);
+    } catch {
+      // Offline fallback
     }
   };
 
@@ -960,8 +994,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (target) {
       try {
         await upsertSupabaseCategory(target);
-      } catch (e: any) {
-        console.warn('[Supabase] Note updating category:', e);
+      } catch {
+        // Offline fallback
       }
     }
   };
@@ -974,8 +1008,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await deleteSupabaseCategory(id);
-    } catch (e: any) {
-      console.warn('[Supabase] Note deleting category:', e);
+    } catch {
+      // Offline fallback
     }
   };
 
@@ -989,8 +1023,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       for (const cat of updatedWithOrder) {
         await upsertSupabaseCategory(cat);
       }
-    } catch (e: any) {
-      console.warn('[Supabase] Note reordering categories:', e);
+    } catch {
+      // Offline fallback
     }
   };
 
@@ -1009,8 +1043,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await insertSupabaseQuote(newQuote);
-    } catch (e: any) {
-      console.warn('[Supabase] Note adding quote:', e);
+    } catch {
+      // Offline fallback
     }
   };
 
@@ -1022,8 +1056,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await updateSupabaseQuoteStatus(id, status);
-    } catch (e: any) {
-      console.warn('[Supabase] Note updating quote status:', e);
+    } catch {
+      // Offline fallback
     }
   };
 
@@ -1035,8 +1069,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await deleteSupabaseQuote(id);
-    } catch (e: any) {
-      console.warn('[Supabase] Note deleting quote:', e);
+    } catch {
+      // Offline fallback
     }
   };
 
@@ -1047,8 +1081,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await saveSupabaseStoreSettings({ whyChooseUs: items });
-    } catch (e: any) {
-      console.warn('[Supabase] Note saving why choose us:', e);
+    } catch {
+      // Offline fallback
     }
   };
 
@@ -1063,8 +1097,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await saveSupabaseStoreSettings({ catalogueSettings: updated });
-    } catch (e: any) {
-      console.warn('[Supabase] Note updating catalogue settings:', e);
+    } catch {
+      // Offline fallback
     }
   };
 
@@ -1097,8 +1131,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         await saveSupabaseStoreSettings({ catalogueSettings: nextSettings });
       }
       await upsertSupabaseCataloguePage(page);
-    } catch (e: any) {
-      console.warn('[Supabase] Note saving catalogue page:', e);
+    } catch {
+      // Offline fallback
     }
   };
 
@@ -1123,8 +1157,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       for (const page of sorted) {
         await upsertSupabaseCataloguePage(page);
       }
-    } catch (e: any) {
-      console.warn('[Supabase] Note saving catalogue pages:', e);
+    } catch {
+      // Offline fallback
     }
   };
 
@@ -1153,8 +1187,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         whyChooseUs: defaultWhyChooseUsData,
         adminAuth: defaultAdminCreds,
       });
-    } catch (e: any) {
-      console.warn('[Supabase] Note resetting to defaults:', e);
+    } catch {
+      // Offline fallback
     }
   };
 

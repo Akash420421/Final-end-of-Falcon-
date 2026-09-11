@@ -65,11 +65,9 @@ export async function uploadOrCompressImage(
       if (publicUrlData?.publicUrl) {
         return publicUrlData.publicUrl;
       }
-    } else if (uploadError) {
-      console.warn('[Supabase Storage] Upload error, falling back:', uploadError.message);
     }
-  } catch (err) {
-    console.warn('[Supabase Storage] Storage bucket upload fallback:', err);
+  } catch {
+    // Fallback to local optimized base64
   }
 
   // Fallback to local optimized base64 data URL

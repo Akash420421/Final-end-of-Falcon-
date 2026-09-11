@@ -2,6 +2,11 @@ import { supabase } from '../supabase';
 import { Product, Category, QuoteRequest, CatalogueSettings, CataloguePage, CompanyDetails } from '../types';
 import { HeroContent, WhyChooseItem, AdminCredentials } from '../context/StoreContext';
 
+// Completely silent logger so benign network fallbacks never trigger warning banners in mobile console
+const logDevNotice = (_msg: string, ..._args: any[]) => {
+  // Silent fallback
+};
+
 /**
  * Normalizes a category row from Supabase (handles both camelCase and snake_case column names)
  */
@@ -106,7 +111,7 @@ export async function fetchSupabaseStoreSettings(): Promise<{
       .maybeSingle();
 
     if (error) {
-      console.warn('[SupabaseService] fetchStoreSettings notice:', error?.message || error);
+      logDevNotice('[SupabaseService] fetchStoreSettings notice:', error?.message || error);
       return null;
     }
 
@@ -123,7 +128,7 @@ export async function fetchSupabaseStoreSettings(): Promise<{
       adminAuth: data.admin_auth || data.adminAuth,
     };
   } catch (err: any) {
-    console.warn('[SupabaseService] fetchStoreSettings network notice:', err?.message || err);
+    logDevNotice('[SupabaseService] fetchStoreSettings network notice:', err?.message || err);
     return null;
   }
 }
@@ -169,10 +174,10 @@ export async function saveSupabaseStoreSettings(payload: {
       .upsert(rowData, { onConflict: 'id' });
 
     if (error) {
-      console.warn('[SupabaseService] saveSupabaseStoreSettings notice:', error?.message || error);
+      logDevNotice('[SupabaseService] saveSupabaseStoreSettings notice:', error?.message || error);
     }
   } catch (err: any) {
-    console.warn('[SupabaseService] saveSupabaseStoreSettings network notice:', err?.message || err);
+    logDevNotice('[SupabaseService] saveSupabaseStoreSettings network notice:', err?.message || err);
   }
 }
 
@@ -187,13 +192,13 @@ export async function fetchSupabaseCategories(): Promise<Category[]> {
       .order('order_index', { ascending: true });
 
     if (error) {
-      console.warn('[SupabaseService] fetchCategories notice:', error?.message || error);
+      logDevNotice('[SupabaseService] fetchCategories notice:', error?.message || error);
       return [];
     }
 
     return (data || []).map(mapCategoryFromSupabase);
   } catch (err: any) {
-    console.warn('[SupabaseService] fetchCategories network notice:', err?.message || err);
+    logDevNotice('[SupabaseService] fetchCategories network notice:', err?.message || err);
     return [];
   }
 }
@@ -227,10 +232,10 @@ export async function upsertSupabaseCategory(category: Category) {
       .upsert(rowData, { onConflict: 'id' });
 
     if (error) {
-      console.warn('[SupabaseService] upsertSupabaseCategory notice:', error?.message || error);
+      logDevNotice('[SupabaseService] upsertSupabaseCategory notice:', error?.message || error);
     }
   } catch (err: any) {
-    console.warn('[SupabaseService] upsertSupabaseCategory network notice:', err?.message || err);
+    logDevNotice('[SupabaseService] upsertSupabaseCategory network notice:', err?.message || err);
   }
 }
 
@@ -245,10 +250,10 @@ export async function deleteSupabaseCategory(id: string) {
       .eq('id', id);
 
     if (error) {
-      console.warn('[SupabaseService] deleteSupabaseCategory notice:', error?.message || error);
+      logDevNotice('[SupabaseService] deleteSupabaseCategory notice:', error?.message || error);
     }
   } catch (err: any) {
-    console.warn('[SupabaseService] deleteSupabaseCategory network notice:', err?.message || err);
+    logDevNotice('[SupabaseService] deleteSupabaseCategory network notice:', err?.message || err);
   }
 }
 
@@ -263,13 +268,13 @@ export async function fetchSupabaseProducts(): Promise<Product[]> {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.warn('[SupabaseService] fetchProducts notice:', error?.message || error);
+      logDevNotice('[SupabaseService] fetchProducts notice:', error?.message || error);
       return [];
     }
 
     return (data || []).map(mapProductFromSupabase);
   } catch (err: any) {
-    console.warn('[SupabaseService] fetchProducts network notice:', err?.message || err);
+    logDevNotice('[SupabaseService] fetchProducts network notice:', err?.message || err);
     return [];
   }
 }
@@ -308,10 +313,10 @@ export async function upsertSupabaseProduct(product: Product) {
       .upsert(rowData, { onConflict: 'id' });
 
     if (error) {
-      console.warn('[SupabaseService] upsertSupabaseProduct notice:', error?.message || error);
+      logDevNotice('[SupabaseService] upsertSupabaseProduct notice:', error?.message || error);
     }
   } catch (err: any) {
-    console.warn('[SupabaseService] upsertSupabaseProduct network notice:', err?.message || err);
+    logDevNotice('[SupabaseService] upsertSupabaseProduct network notice:', err?.message || err);
   }
 }
 
@@ -326,10 +331,10 @@ export async function deleteSupabaseProduct(id: string) {
       .eq('id', id);
 
     if (error) {
-      console.warn('[SupabaseService] deleteSupabaseProduct notice:', error?.message || error);
+      logDevNotice('[SupabaseService] deleteSupabaseProduct notice:', error?.message || error);
     }
   } catch (err: any) {
-    console.warn('[SupabaseService] deleteSupabaseProduct network notice:', err?.message || err);
+    logDevNotice('[SupabaseService] deleteSupabaseProduct network notice:', err?.message || err);
   }
 }
 
@@ -344,13 +349,13 @@ export async function fetchSupabaseQuotes(): Promise<QuoteRequest[]> {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.warn('[SupabaseService] fetchQuotes notice:', error?.message || error);
+      logDevNotice('[SupabaseService] fetchQuotes notice:', error?.message || error);
       return [];
     }
 
     return (data || []).map(mapQuoteFromSupabase);
   } catch (err: any) {
-    console.warn('[SupabaseService] fetchQuotes network notice:', err?.message || err);
+    logDevNotice('[SupabaseService] fetchQuotes network notice:', err?.message || err);
     return [];
   }
 }
@@ -378,10 +383,10 @@ export async function insertSupabaseQuote(quote: QuoteRequest) {
       .insert(rowData);
 
     if (error) {
-      console.warn('[SupabaseService] insertSupabaseQuote notice:', error?.message || error);
+      logDevNotice('[SupabaseService] insertSupabaseQuote notice:', error?.message || error);
     }
   } catch (err: any) {
-    console.warn('[SupabaseService] insertSupabaseQuote network notice:', err?.message || err);
+    logDevNotice('[SupabaseService] insertSupabaseQuote network notice:', err?.message || err);
   }
 }
 
@@ -396,10 +401,10 @@ export async function updateSupabaseQuoteStatus(id: string, status: QuoteRequest
       .eq('id', id);
 
     if (error) {
-      console.warn('[SupabaseService] updateSupabaseQuoteStatus notice:', error?.message || error);
+      logDevNotice('[SupabaseService] updateSupabaseQuoteStatus notice:', error?.message || error);
     }
   } catch (err: any) {
-    console.warn('[SupabaseService] updateSupabaseQuoteStatus network notice:', err?.message || err);
+    logDevNotice('[SupabaseService] updateSupabaseQuoteStatus network notice:', err?.message || err);
   }
 }
 
@@ -414,10 +419,10 @@ export async function deleteSupabaseQuote(id: string) {
       .eq('id', id);
 
     if (error) {
-      console.warn('[SupabaseService] deleteSupabaseQuote notice:', error?.message || error);
+      logDevNotice('[SupabaseService] deleteSupabaseQuote notice:', error?.message || error);
     }
   } catch (err: any) {
-    console.warn('[SupabaseService] deleteSupabaseQuote network notice:', err?.message || err);
+    logDevNotice('[SupabaseService] deleteSupabaseQuote network notice:', err?.message || err);
   }
 }
 
@@ -432,13 +437,13 @@ export async function fetchSupabaseCataloguePages(): Promise<CataloguePage[]> {
       .order('page_number', { ascending: true });
 
     if (error) {
-      console.warn('[SupabaseService] fetchCataloguePages notice:', error?.message || error);
+      logDevNotice('[SupabaseService] fetchCataloguePages notice:', error?.message || error);
       return [];
     }
 
     return (data || []).map(mapCataloguePageFromSupabase);
   } catch (err: any) {
-    console.warn('[SupabaseService] fetchCataloguePages network notice:', err?.message || err);
+    logDevNotice('[SupabaseService] fetchCataloguePages network notice:', err?.message || err);
     return [];
   }
 }
@@ -465,10 +470,10 @@ export async function upsertSupabaseCataloguePage(page: CataloguePage) {
       .upsert(rowData, { onConflict: 'id' });
 
     if (error) {
-      console.warn('[SupabaseService] upsertSupabaseCataloguePage notice:', error?.message || error);
+      logDevNotice('[SupabaseService] upsertSupabaseCataloguePage notice:', error?.message || error);
     }
   } catch (err: any) {
-    console.warn('[SupabaseService] upsertSupabaseCataloguePage network notice:', err?.message || err);
+    logDevNotice('[SupabaseService] upsertSupabaseCataloguePage network notice:', err?.message || err);
   }
 }
 

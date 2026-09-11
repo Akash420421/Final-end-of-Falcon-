@@ -163,7 +163,7 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({
               </motion.button>
 
               <div className="text-[10px] text-slate-400 text-center pt-2">
-                GSTIN: {companyDetails.gstin}
+                <span>GSTIN: {companyDetails.gstin}</span>
               </div>
             </div>
           </motion.div>

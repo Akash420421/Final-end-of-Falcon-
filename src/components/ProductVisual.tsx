@@ -51,6 +51,7 @@ export const ProductVisual: React.FC<ProductVisualProps> = ({
           src={type}
           alt="Product or Category visual"
           loading="lazy"
+          referrerPolicy="no-referrer"
           className={`w-full h-full ${fitClass} transition-transform duration-300 select-none`}
         />
       </div>
