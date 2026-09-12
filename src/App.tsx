@@ -108,15 +108,17 @@ function MainContent() {
 
   // Filter products based on search and category
   const filteredProducts = useMemo(() => {
+    const trimmedQuery = searchQuery.trim().toLowerCase();
+    const queryTokens = trimmedQuery ? trimmedQuery.split(/\s+/).filter(Boolean) : [];
+
     return products.filter((prod) => {
       const matchesCategory = !selectedCategoryId || prod.category === selectedCategoryId;
-      const matchesSearch =
-        !searchQuery ||
-        prod.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        prod.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        prod.categoryName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (prod.amps && prod.amps.toLowerCase().includes(searchQuery.toLowerCase()));
-      return matchesCategory && matchesSearch;
+      if (!matchesCategory) return false;
+      if (queryTokens.length === 0) return true;
+
+      const searchableText = `${prod.name} ${prod.description || ''} ${prod.categoryName || ''} ${prod.subCategory || ''} ${prod.amps || ''} ${prod.material || ''} ${prod.badge || ''}`.toLowerCase();
+      // Match all search tokens for accurate multi-word queries
+      return queryTokens.every((token) => searchableText.includes(token));
     });
   }, [products, selectedCategoryId, searchQuery]);
 

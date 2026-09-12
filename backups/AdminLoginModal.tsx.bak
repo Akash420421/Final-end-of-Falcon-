@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Lock, Mail, ShieldAlert, KeyRound, Clock, Eye, EyeOff } from 'lucide-react';
+import { X, Lock, Mail, ShieldAlert, KeyRound, Clock } from 'lucide-react';
 import { useFalconStore } from '../context/StoreContext';
 import {
   getLoginRateLimitState,
@@ -23,7 +23,6 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   const { loginAdmin } = useFalconStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [lockoutSeconds, setLockoutSeconds] = useState(0);
@@ -158,28 +157,19 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
           <div className="space-y-1">
             <label className="text-[11px] font-bold uppercase text-slate-600 tracking-wider">
-              Admin Password / PIN
+              Admin Password
             </label>
             <div className="relative">
               <input
-                type={showPassword ? 'text' : 'password'}
+                type="password"
                 required
                 disabled={isLockedOut || isLoggingIn}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter admin password or PIN"
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-10 py-3 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#E0183D] focus:ring-1 focus:ring-[#E0183D] transition disabled:opacity-50"
+                placeholder="Enter admin password"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-3 py-3 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#E0183D] focus:ring-1 focus:ring-[#E0183D] transition disabled:opacity-50"
               />
               <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-              <button
-                type="button"
-                tabIndex={-1}
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 p-0.5"
-                title={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
             </div>
           </div>
 
