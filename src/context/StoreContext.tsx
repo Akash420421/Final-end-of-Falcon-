@@ -260,20 +260,8 @@ const mergeCompanyDetails = (data?: Partial<CompanyDetails> | null): CompanyDeta
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [initialSyncStatus, setInitialSyncStatus] = useState<'loading' | 'success' | 'error'>(() => {
-    try {
-      const storedProds = safeLocalStorageGet('falcon_products');
-      const storedCats = safeLocalStorageGet('falcon_categories');
-      if (storedProds && storedCats) {
-        const p = JSON.parse(storedProds);
-        const c = JSON.parse(storedCats);
-        if (Array.isArray(p) && p.length > 0 && Array.isArray(c) && c.length > 0) {
-          return 'success'; // Fast instant render using cached verified data
-        }
-      }
-    } catch {}
-    return 'loading';
-  });
+  // Always show the skeleton loader briefly on load/reload while verifying data with Supabase
+  const [initialSyncStatus, setInitialSyncStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [initialSyncError, setInitialSyncError] = useState<string | null>(null);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(() => {
     return typeof navigator === 'undefined' ? true : navigator.onLine;
@@ -407,10 +395,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const initSupabaseSync = async () => {
       try {
-        // If we already have offline cached data, keep rendering immediately; only show loading for cold first visit
-        if (!hasOfflineCache) {
-          setInitialSyncStatus('loading');
-        }
+        // Always show the skeleton loader briefly during sync
+        setInitialSyncStatus('loading');
         setInitialSyncError(null);
 
         // Fetch ALL critical initial datasets concurrently in parallel with allSettled

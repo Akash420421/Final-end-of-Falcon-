@@ -129,35 +129,43 @@ export const FullPageSkeletonLoader: React.FC<FullPageSkeletonLoaderProps> = ({
           </div>
         </div>
       ) : (
-        /* Normal Animated White / Neutral Skeleton Structure */
+        /* Normal Animated White / Neutral Skeleton Structure matching exact store layout */
         <div className="flex-1 flex flex-col w-full overflow-hidden animate-pulse">
-          {/* 3. Hero Section Skeleton */}
-          <div className="p-4 md:p-6 max-w-6xl mx-auto w-full">
-            <div className="bg-white border border-slate-200/80 rounded-3xl p-6 md:p-10 space-y-4 shadow-sm">
-              <div className="w-36 h-4 bg-slate-200/80 rounded-full"></div>
-              <div className="w-3/4 h-8 bg-slate-200/80 rounded-xl"></div>
-              <div className="w-1/2 h-4 bg-slate-100 rounded-md"></div>
-              <div className="pt-2 flex gap-3">
-                <div className="w-32 h-10 bg-slate-200/80 rounded-xl"></div>
-                <div className="w-32 h-10 bg-slate-100 rounded-xl"></div>
+          {/* 3. Hero Section Skeleton - Matching Red/Dark Hero Card */}
+          <div className="p-3 sm:p-4 md:p-6 max-w-6xl mx-auto w-full">
+            <div className="bg-gradient-to-br from-red-600 to-[#B00E2E] rounded-3xl p-6 md:p-10 shadow-md relative overflow-hidden flex flex-col justify-between min-h-[220px]">
+              <div className="space-y-4 max-w-md">
+                <div className="w-28 h-5 bg-white/20 backdrop-blur-sm rounded-full"></div>
+                <div className="w-4/5 h-8 bg-white/30 rounded-xl"></div>
+                <div className="w-3/5 h-4 bg-white/20 rounded-md"></div>
+              </div>
+              <div className="pt-4 flex items-center gap-3">
+                <div className="w-32 h-10 bg-white/30 rounded-xl"></div>
+                <div className="w-28 h-10 bg-black/20 rounded-xl"></div>
               </div>
             </div>
           </div>
 
           {/* 4. Search Bar Skeleton */}
-          <div className="px-4 max-w-6xl mx-auto w-full my-1">
-            <div className="w-full h-12 bg-white border border-slate-200/80 rounded-2xl shadow-xs"></div>
+          <div className="px-3 sm:px-4 max-w-6xl mx-auto w-full mb-3">
+            <div className="w-full h-12 bg-white border border-slate-200/90 rounded-2xl shadow-xs flex items-center px-4 gap-3">
+              <div className="w-5 h-5 rounded-full bg-slate-200 shrink-0"></div>
+              <div className="w-48 h-3.5 bg-slate-100 rounded-md"></div>
+            </div>
           </div>
 
           {/* 5. Categories Carousel Skeleton */}
-          <div className="p-4 max-w-6xl mx-auto w-full space-y-3">
-            <div className="w-40 h-5 bg-slate-200/80 rounded-md"></div>
+          <div className="p-3 sm:p-4 max-w-6xl mx-auto w-full space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="w-36 h-5 bg-slate-200 rounded-md"></div>
+              <div className="w-16 h-3 bg-slate-100 rounded"></div>
+            </div>
             <div className="flex gap-3 overflow-x-auto no-scrollbar">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="min-w-[200px] h-28 bg-white border border-slate-200/80 rounded-2xl p-3 flex flex-col justify-between shadow-xs">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="min-w-[200px] h-28 bg-white border border-slate-200/80 rounded-2xl p-3 flex flex-col justify-between shadow-xs shrink-0">
                   <div className="w-8 h-8 bg-slate-100 rounded-lg"></div>
                   <div className="space-y-1.5">
-                    <div className="w-3/4 h-3.5 bg-slate-200/80 rounded"></div>
+                    <div className="w-3/4 h-3.5 bg-slate-200 rounded"></div>
                     <div className="w-1/2 h-2.5 bg-slate-100 rounded"></div>
                   </div>
                 </div>
@@ -166,14 +174,17 @@ export const FullPageSkeletonLoader: React.FC<FullPageSkeletonLoaderProps> = ({
           </div>
 
           {/* 6. Products Skeleton Grid */}
-          <div className="p-4 max-w-6xl mx-auto w-full space-y-3 flex-1">
-            <div className="w-48 h-5 bg-slate-200/80 rounded-md"></div>
+          <div className="p-3 sm:p-4 max-w-6xl mx-auto w-full space-y-3 flex-1">
+            <div className="flex items-center justify-between">
+              <div className="w-40 h-5 bg-slate-200 rounded-md"></div>
+              <div className="w-20 h-3 bg-slate-100 rounded"></div>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="bg-white border border-slate-200/80 rounded-2xl p-3 space-y-3 shadow-xs">
-                  <div className="w-full h-28 bg-slate-100 rounded-xl"></div>
+                  <div className="w-full h-32 bg-slate-100 rounded-xl"></div>
                   <div className="w-1/2 h-3 bg-slate-100 rounded"></div>
-                  <div className="w-3/4 h-4 bg-slate-200/80 rounded"></div>
+                  <div className="w-3/4 h-4 bg-slate-200 rounded"></div>
                   <div className="w-full h-8 bg-slate-100 rounded-lg"></div>
                 </div>
               ))}

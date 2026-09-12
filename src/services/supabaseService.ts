@@ -11,13 +11,20 @@ const logDevNotice = (_msg: string, ..._args: any[]) => {
  * Normalizes a category row from Supabase (handles both camelCase and snake_case column names)
  */
 export function mapCategoryFromSupabase(row: any): Category {
+  // If either image_url or imageUrl has a custom image (URL or data URI), prioritize it over fallback demo strings
+  const customImg = [row.imageUrl, row.image_url, row.image].find(
+    (val) => typeof val === 'string' && (val.startsWith('data:') || val.startsWith('http') || val.startsWith('/') || val.startsWith('blob:'))
+  );
+  const fallbackImg = row.image || row.image_url || row.imageUrl || '';
+  const finalImage = customImg || fallbackImg;
+
   return {
     id: row.id,
     title: row.title || '',
     subtitle: row.subtitle || '',
     description: row.description || '',
-    image: row.image || row.image_url || row.imageUrl || '',
-    imageUrl: row.imageUrl || row.image_url || row.image || '',
+    image: finalImage,
+    imageUrl: customImg || row.imageUrl || row.image_url || '',
     imageFit: row.imageFit || row.image_fit || 'contain',
     bgColor: row.bgColor || row.bg_color || '',
     borderColor: row.borderColor || row.border_color || '',
