@@ -125,6 +125,7 @@ export async function fetchSupabaseStoreSettings(): Promise<{
       logoImageUrl: data.logo_image_url || data.logoImageUrl,
       whyChooseUs: data.why_choose_us || data.whyChooseUs,
       catalogueSettings: data.catalogue_settings || data.catalogueSettings,
+      adminAuth: data.admin_auth || data.adminAuth,
     };
   } catch (err: any) {
     logDevNotice('[SupabaseService] fetchStoreSettings network notice:', err?.message || err);
@@ -163,8 +164,9 @@ export async function saveSupabaseStoreSettings(payload: {
   if (payload.catalogueSettings !== undefined) {
     rowData.catalogue_settings = payload.catalogueSettings;
   }
-  // Note: adminAuth credentials are intentionally kept out of public store_settings table
-  // to protect admin security from network inspection.
+  if (payload.adminAuth !== undefined) {
+    rowData.admin_auth = payload.adminAuth;
+  }
 
   try {
     const { error } = await supabase

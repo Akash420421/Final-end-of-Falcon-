@@ -90,9 +90,8 @@ export function getHeartbeatStatus(): HeartbeatStatus {
 
 /**
  * Executes a simulated active user inquiry / database keep-alive pulse:
- * 1. Inserts a lightweight simulated query record into Supabase `quotes`
- * 2. Selects it to verify activity
- * 3. Cleans up old automated probe queries after 5 minutes
+ * 1. Executes lightweight query on store_settings
+ * 2. Marks timestamp
  */
 export async function sendHeartbeatPulse(manual = false): Promise<boolean> {
   currentStatus = {
@@ -106,23 +105,8 @@ export async function sendHeartbeatPulse(manual = false): Promise<boolean> {
   const now = new Date().toISOString();
 
   try {
-    // 1. Insert a temporary lightweight inquiry probe
-    const { error: insertError } = await supabase.from('quotes').insert({
-      id: probeId,
-      name: 'System Health Probe',
-      phone: '9999999999',
-      email: 'health@falconelectrics.internal',
-      quantity: '1 Unit',
-      notes: 'Automated system keep-alive query (auto-cleaned in 5m)',
-      product_name: 'Falcon Auto-Ping Keepalive',
-      product_id: 'falcon-probe',
-      status: 'Pending',
-      created_at: now,
-    });
-
-    if (insertError) {
-      await supabase.from('store_settings').select('id').limit(1);
-    }
+    // 1. Lightweight read query on store_settings to keep Supabase connection active & alive
+    await supabase.from('store_settings').select('id').limit(1);
 
     // 2. Mark timestamp
     if (typeof window !== 'undefined') {
@@ -137,18 +121,6 @@ export async function sendHeartbeatPulse(manual = false): Promise<boolean> {
       nextScheduledTime: calculateNextScheduled(now),
     };
     notifyListeners();
-
-    // 3. Schedule silent cleanup of probe queries older than 2 minutes
-    setTimeout(async () => {
-      try {
-        await supabase
-          .from('quotes')
-          .delete()
-          .like('id', 'auto-pulse-%');
-      } catch {
-        // safe ignore cleanup errors
-      }
-    }, 5 * 60 * 1000); // 5 minutes
 
     return true;
   } catch (err: any) {
@@ -193,8 +165,8 @@ export async function runMultiUserSimulation(
       id: 3,
       userName: 'Amit Verma',
       location: 'Ahmedabad, GJ',
-      action: 'Submitting Realtime Price Quotation Inquiry',
-      table: 'quotes',
+      action: 'Checking Electrical Safety Compliance & Spec Sheets',
+      table: 'products',
     },
     {
       id: 4,
@@ -219,8 +191,6 @@ export async function runMultiUserSimulation(
   };
   notifyListeners();
 
-  const createdProbeIds: string[] = [];
-
   for (let i = 0; i < userPersonas.length; i++) {
     const persona = userPersonas[i];
     const stepStart = Date.now();
@@ -236,27 +206,6 @@ export async function runMultiUserSimulation(
         const { data, error } = await supabase.from('categories').select('id, title, subCategories').limit(4);
         if (error) throw error;
         details = `Loaded ${data?.length || 0} product categories & sub-lines (Read Query)`;
-      } else if (persona.table === 'quotes') {
-        const probeId = `sim-user-${Date.now()}-${i}`;
-        createdProbeIds.push(probeId);
-        const { error } = await supabase.from('quotes').insert({
-          id: probeId,
-          name: `${persona.userName} (Simulated)`,
-          phone: '+91 98765 43210',
-          email: 'inquiry.sim@falconelectrics.in',
-          quantity: '50 Pcs',
-          notes: 'Simulated active customer quote inquiry to keep Supabase awake',
-          product_name: 'Smart WiFi Touch Switch 2M',
-          product_id: 'falcon-smart-touch-2m',
-          status: 'Active Simulation',
-          created_at: new Date().toISOString(),
-        });
-        if (error) {
-          stepStatus = 'warning';
-          details = `Quote insert note: ${error.message} (Handled gracefully)`;
-        } else {
-          details = `Inquiry created for 50 Pcs Smart Switch (Write Query)`;
-        }
       } else if (persona.table === 'catalogue_pages') {
         const { data, error } = await supabase.from('catalogue_pages').select('id, pageNumber, title').limit(5);
         if (error) throw error;
@@ -293,20 +242,6 @@ export async function runMultiUserSimulation(
     if (i < userPersonas.length - 1) {
       await new Promise((resolve) => setTimeout(resolve, 220));
     }
-  }
-
-  // Cleanup created probe quotes
-  if (createdProbeIds.length > 0) {
-    setTimeout(async () => {
-      try {
-        await supabase
-          .from('quotes')
-          .delete()
-          .like('id', 'sim-user-%');
-      } catch {
-        // ignore
-      }
-    }, 15000); // Clean after 15 seconds
   }
 
   const totalTime = Date.now() - startTime;

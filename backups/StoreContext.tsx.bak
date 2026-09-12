@@ -477,6 +477,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             setCatalogueSettingsState(mergedCat);
             safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(mergedCat));
           }
+          if (settingsResult.adminAuth?.email && settingsResult.adminAuth?.passwordHash) {
+            setAdminCredentialsState({
+              email: settingsResult.adminAuth.email,
+              passwordHash: settingsResult.adminAuth.passwordHash,
+            });
+            safeLocalStorageSet('falcon_admin_credentials', JSON.stringify(settingsResult.adminAuth));
+          }
         } else if (!isDataInitialized() && !isSeedingRef.current) {
           // Attempt first-time seed if table is blank
           isSeedingRef.current = true;
@@ -486,6 +493,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             logoImageUrl: '',
             whyChooseUs: defaultWhyChooseUsData,
             catalogueSettings: defaultCatalogueSettings,
+            adminAuth: defaultAdminCreds,
           }).catch(() => {});
         }
 
@@ -665,6 +673,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 return merged;
               });
             }
+            if (newAuth?.email && newAuth?.passwordHash) {
+              setAdminCredentialsState(newAuth);
+            }
           }
         }
       )
@@ -769,6 +780,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const newCreds: AdminCredentials = { email: cleanEmail, passwordHash: newHash };
     setAdminCredentialsState(newCreds);
     safeLocalStorageSet('falcon_admin_credentials', JSON.stringify(newCreds));
+
+    try {
+      await saveSupabaseStoreSettings({ adminAuth: newCreds });
+    } catch {
+      // Offline fallback
+    }
   };
 
   // 2. Update Company Details
@@ -1116,6 +1133,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         heroContent: defaultHeroContent,
         logoImageUrl: '',
         whyChooseUs: defaultWhyChooseUsData,
+        adminAuth: defaultAdminCreds,
       });
     } catch {
       // Offline fallback
@@ -1125,13 +1143,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // 20. Manual Force Sync All Data to Supabase
   const syncAllDataToSupabase = async (): Promise<{ success: boolean; message: string }> => {
     try {
-      // 1. Save global store settings (public branding and settings only)
+      // 1. Save global store settings
       await saveSupabaseStoreSettings({
         companyDetails,
         heroContent,
         logoImageUrl,
         whyChooseUs,
         catalogueSettings,
+        adminAuth: adminCredentials,
       });
 
       // 2. Save products
