@@ -162,21 +162,8 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({
                 <span>WhatsApp Sales Line</span>
               </motion.button>
 
-              <div className="text-[10px] text-slate-400 text-center pt-2 flex items-center justify-center gap-2">
+              <div className="text-[10px] text-slate-400 text-center pt-2">
                 <span>GSTIN: {companyDetails.gstin}</span>
-                <span className="text-slate-600">•</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    onOpenAdminPanel();
-                  }}
-                  className="text-slate-500 hover:text-white transition flex items-center gap-1 text-[10px] py-0.5 px-1.5 rounded hover:bg-white/10"
-                  title="Admin Portal Access"
-                >
-                  <ShieldCheck className="w-3 h-3 text-[#E0183D]" />
-                  <span>Admin</span>
-                </button>
               </div>
             </div>
           </motion.div>
