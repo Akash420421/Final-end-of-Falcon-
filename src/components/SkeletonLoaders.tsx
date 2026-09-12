@@ -90,28 +90,20 @@ export const FullPageSkeletonLoader: React.FC<FullPageSkeletonLoaderProps> = ({
         <div className="w-20 h-4 bg-slate-100 rounded-full animate-pulse"></div>
       </div>
 
-      {/* Error Overlay / Modal if initialization failed */}
-      {error ? (
+      {/* Offline Alert Modal ONLY when the device is genuinely offline (no mobile data or Wi-Fi) */}
+      {error && isBrowserOffline ? (
         <div className="flex-1 flex items-center justify-center p-4 z-20">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-md w-full text-center shadow-xl space-y-5">
-            <div className="w-14 h-14 bg-red-50 border border-red-200 rounded-2xl flex items-center justify-center mx-auto text-[#E0183D] shadow-xs">
-              {isBrowserOffline ? (
-                <WifiOff className="w-7 h-7" />
-              ) : (
-                <ServerOff className="w-7 h-7" />
-              )}
+          <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 max-w-md w-full text-center shadow-xl space-y-5">
+            <div className="w-16 h-16 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-center mx-auto text-[#E0183D] shadow-xs">
+              <WifiOff className="w-8 h-8" />
             </div>
 
             <div className="space-y-2">
               <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                {isBrowserOffline
-                  ? 'No Internet Connection Detected'
-                  : 'Unable to Connect to Database'}
+                No Internet Connection Detected
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
-                {isBrowserOffline
-                  ? 'Please check your internet connection or network speed and try again.'
-                  : 'We could not fetch live store data from the server. Please check your connection and tap retry.'}
+                You are currently offline. Please reconnect your mobile data or Wi-Fi and tap retry.
               </p>
             </div>
 
@@ -119,29 +111,29 @@ export const FullPageSkeletonLoader: React.FC<FullPageSkeletonLoaderProps> = ({
               {onRetry && (
                 <button
                   onClick={onRetry}
-                  className="w-full bg-[#E0183D] hover:bg-[#c01233] text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-98 cursor-pointer"
+                  className="w-full bg-[#E0183D] hover:bg-[#c01233] text-white font-bold py-3.5 px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition active:scale-98 cursor-pointer"
                 >
                   <RefreshCw className="w-4 h-4" />
-                  <span>Retry Connection</span>
+                  <span>Repeat / Retry Connection</span>
                 </button>
               )}
             </div>
           </div>
         </div>
       ) : (
-        /* Normal Animated White / Neutral Skeleton Structure matching exact store layout */
+        /* Normal Animated White / Neutral Gray Skeleton Structure matching exact store layout */
         <div className="flex-1 flex flex-col w-full overflow-hidden animate-pulse">
-          {/* 3. Hero Section Skeleton - Matching Red/Dark Hero Card */}
+          {/* 3. Hero Section Skeleton - Clean White & Neutral Gray */}
           <div className="p-3 sm:p-4 md:p-6 max-w-6xl mx-auto w-full">
-            <div className="bg-gradient-to-br from-red-600 to-[#B00E2E] rounded-3xl p-6 md:p-10 shadow-md relative overflow-hidden flex flex-col justify-between min-h-[220px]">
-              <div className="space-y-4 max-w-md">
-                <div className="w-28 h-5 bg-white/20 backdrop-blur-sm rounded-full"></div>
-                <div className="w-4/5 h-8 bg-white/30 rounded-xl"></div>
-                <div className="w-3/5 h-4 bg-white/20 rounded-md"></div>
+            <div className="bg-white border border-slate-200/80 rounded-3xl p-6 md:p-8 space-y-4 shadow-sm min-h-[190px] flex flex-col justify-between">
+              <div className="space-y-3 max-w-md">
+                <div className="w-36 h-4 bg-slate-200/90 rounded-full"></div>
+                <div className="w-4/5 h-7 bg-slate-200 rounded-xl"></div>
+                <div className="w-3/5 h-4 bg-slate-100 rounded-md"></div>
               </div>
-              <div className="pt-4 flex items-center gap-3">
-                <div className="w-32 h-10 bg-white/30 rounded-xl"></div>
-                <div className="w-28 h-10 bg-black/20 rounded-xl"></div>
+              <div className="pt-2 flex items-center gap-3">
+                <div className="w-32 h-9 bg-slate-200 rounded-xl"></div>
+                <div className="w-28 h-9 bg-slate-100 rounded-xl"></div>
               </div>
             </div>
           </div>

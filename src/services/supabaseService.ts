@@ -100,6 +100,63 @@ export function mapCataloguePageFromSupabase(row: any): CataloguePage {
 }
 
 /**
+ * Fast-path: Fetches critical store branding and settings
+ * (Excludes heavy catalogue base64 data for blazing fast initial screen load)
+ */
+export async function fetchSupabaseStoreSettingsCore(): Promise<{
+  companyDetails?: CompanyDetails;
+  heroContent?: HeroContent;
+  logoImageUrl?: string;
+  whyChooseUs?: WhyChooseItem[];
+  adminAuth?: AdminCredentials;
+} | null> {
+  try {
+    const { data, error } = await supabase
+      .from('store_settings')
+      .select('id, company_details, hero_content, logo_image_url, why_choose_us, admin_auth')
+      .eq('id', 'company_branding')
+      .maybeSingle();
+
+    if (error) {
+      logDevNotice('[SupabaseService] fetchStoreSettingsCore notice:', error?.message || error);
+      return null;
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    return {
+      companyDetails: (data as any).company_details || (data as any).companyDetails,
+      heroContent: (data as any).hero_content || (data as any).heroContent,
+      logoImageUrl: (data as any).logo_image_url || (data as any).logoImageUrl,
+      whyChooseUs: (data as any).why_choose_us || (data as any).whyChooseUs,
+    };
+  } catch (err: any) {
+    logDevNotice('[SupabaseService] fetchStoreSettingsCore network notice:', err?.message || err);
+    return null;
+  }
+}
+
+/**
+ * Fetches catalogue settings separately in the background
+ */
+export async function fetchSupabaseCatalogueSettings(): Promise<CatalogueSettings | null> {
+  try {
+    const { data, error } = await supabase
+      .from('store_settings')
+      .select('catalogue_settings')
+      .eq('id', 'company_branding')
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return (data as any).catalogue_settings || (data as any).catalogueSettings || null;
+  } catch (err: any) {
+    return null;
+  }
+}
+
+/**
  * Fetches all store settings from Supabase
  */
 export async function fetchSupabaseStoreSettings(): Promise<{

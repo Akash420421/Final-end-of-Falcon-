@@ -11,6 +11,8 @@ import {
 import { supabase } from '../supabase';
 import {
   fetchSupabaseStoreSettings,
+  fetchSupabaseStoreSettingsCore,
+  fetchSupabaseCatalogueSettings,
   saveSupabaseStoreSettings,
   fetchSupabaseCategories,
   upsertSupabaseCategory,
@@ -257,11 +259,34 @@ const mergeCompanyDetails = (data?: Partial<CompanyDetails> | null): CompanyDeta
   return result;
 };
 
+const hasAnyCachedStoreData = (): boolean => {
+  try {
+    const storedProds = safeLocalStorageGet('falcon_products');
+    const storedCats = safeLocalStorageGet('falcon_categories');
+    if (storedProds) {
+      const p = JSON.parse(storedProds);
+      if (Array.isArray(p) && p.length > 0) return true;
+    }
+    if (storedCats) {
+      const c = JSON.parse(storedCats);
+      if (Array.isArray(c) && c.length > 0) return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+};
+
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Always show the skeleton loader briefly on load/reload while verifying data with Supabase
-  const [initialSyncStatus, setInitialSyncStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  // If store data is already in cache, start immediately with 'success' (0ms instant render).
+  // Error state is strictly reserved for genuine offline state with zero cached data.
+  const [initialSyncStatus, setInitialSyncStatus] = useState<'loading' | 'success' | 'error'>(() => {
+    if (hasAnyCachedStoreData()) return 'success';
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return 'error';
+    return 'loading';
+  });
   const [initialSyncError, setInitialSyncError] = useState<string | null>(null);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(() => {
     return typeof navigator === 'undefined' ? true : navigator.onLine;
@@ -284,13 +309,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const hasOfflineCache = useMemo(() => {
-    try {
-      const storedProds = safeLocalStorageGet('falcon_products');
-      const storedCats = safeLocalStorageGet('falcon_categories');
-      return Boolean(storedProds && storedCats);
-    } catch {
-      return false;
-    }
+    return hasAnyCachedStoreData();
   }, []);
 
   const [companyDetails, setCompanyDetailsState] = useState<CompanyDetails>(() => {
@@ -311,14 +330,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return safeLocalStorageGet('falcon_logo_image') || '';
   });
 
+  // Never initialize with demo products. Only initialize with real cached products, else empty array.
   const [products, setProductsState] = useState<Product[]>(() => {
-    const saved = safeLocalStorageGet('falcon_products');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = safeLocalStorageGet('falcon_products');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
   });
 
+  // Never initialize with demo categories. Only initialize with real cached categories, else empty array.
   const [categories, setCategoriesState] = useState<Category[]>(() => {
-    const saved = safeLocalStorageGet('falcon_categories');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = safeLocalStorageGet('falcon_categories');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
   });
 
   const [whyChooseUs, setWhyChooseUsState] = useState<WhyChooseItem[]>(() => {
@@ -395,21 +428,22 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const initSupabaseSync = async () => {
       try {
-        // Always show the skeleton loader briefly during sync
-        setInitialSyncStatus('loading');
+        // If we don't have cached real data, show the skeleton loader while syncing
+        if (!hasAnyCachedStoreData()) {
+          setInitialSyncStatus('loading');
+        }
         setInitialSyncError(null);
 
-        // Fetch ALL critical initial datasets concurrently in parallel with allSettled
+        // FAST-PATH: Fetch critical initial datasets in parallel (Store Branding, Products, Categories)
+        // No artificial timeout cutting off slow cellular mobile data
         const [
           settingsRes,
           productsRes,
           categoriesRes,
-          pagesRes,
         ] = await Promise.allSettled([
-          fetchSupabaseStoreSettings(),
+          fetchSupabaseStoreSettingsCore(),
           fetchSupabaseProducts(),
           fetchSupabaseCategories(),
-          fetchSupabaseCataloguePages(),
         ]);
 
         if (!isMounted) return;
@@ -417,16 +451,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const settingsResult = settingsRes.status === 'fulfilled' ? settingsRes.value : null;
         const productsResult = productsRes.status === 'fulfilled' ? productsRes.value : null;
         const categoriesResult = categoriesRes.status === 'fulfilled' ? categoriesRes.value : null;
-        const pagesResult = pagesRes.status === 'fulfilled' ? pagesRes.value : null;
 
         const hasAnyRemoteData = Boolean(
           settingsResult ||
           (productsResult && productsResult.length > 0) ||
-          (categoriesResult && categoriesResult.length > 0) ||
-          (pagesResult && pagesResult.length > 0)
+          (categoriesResult && categoriesResult.length > 0)
         );
 
-        // 1. Process Store Settings
+        // 1. Process Core Store Settings
         if (settingsResult) {
           markDataInitialized();
           if (settingsResult.companyDetails) {
@@ -452,17 +484,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             setWhyChooseUsState(settingsResult.whyChooseUs);
             safeLocalStorageSet('falcon_why_choose_us', JSON.stringify(settingsResult.whyChooseUs));
           }
-          if (settingsResult.catalogueSettings) {
-            const mergedCat: CatalogueSettings = {
-              ...defaultCatalogueSettings,
-              ...settingsResult.catalogueSettings,
-              pages: settingsResult.catalogueSettings.pages?.length
-                ? settingsResult.catalogueSettings.pages
-                : defaultCatalogueSettings.pages,
-            };
-            setCatalogueSettingsState(mergedCat);
-            safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(mergedCat));
-          }
         } else if (!isDataInitialized() && !isSeedingRef.current) {
           // Attempt first-time seed if table is blank
           isSeedingRef.current = true;
@@ -475,96 +496,93 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }).catch(() => {});
         }
 
-        // 2. Process Products
+        // 2. Process Products (Save real products to state & cache)
         if (productsResult && productsResult.length > 0) {
           markDataInitialized();
           setProductsState(productsResult);
           safeLocalStorageSet('falcon_products', JSON.stringify(productsResult));
-        } else if (!isDataInitialized() && !isSeedingRef.current) {
-          for (const prod of defaultProductsData) {
-            upsertSupabaseProduct(prod).catch(() => {});
-          }
         }
 
-        // 3. Process Categories
+        // 3. Process Categories (Save real categories to state & cache)
         if (categoriesResult && categoriesResult.length > 0) {
           markDataInitialized();
           const sortedCats = [...categoriesResult].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
           setCategoriesState(sortedCats);
           safeLocalStorageSet('falcon_categories', JSON.stringify(sortedCats));
-        } else if (!isDataInitialized() && !isSeedingRef.current) {
-          for (const cat of defaultCategoriesData) {
-            upsertSupabaseCategory(cat).catch(() => {});
-          }
         }
 
-        // 4. Process Catalogue Pages
-        if (pagesResult && pagesResult.length > 0) {
-          setCatalogueSettingsState((prev) => {
-            const currentPages = prev.pages && prev.pages.length > 0 ? prev.pages : defaultCatalogueSettings.pages;
-            const map = new Map<string, CataloguePage>();
-            pagesResult.forEach((p) => map.set(p.id, p));
+        // 4. BACKGROUND LOAD: Catalogue Pages & Settings (non-blocking for UI)
+        fetchSupabaseCataloguePages()
+          .then((pagesResult) => {
+            if (!isMounted || !pagesResult || pagesResult.length === 0) return;
+            setCatalogueSettingsState((prev) => {
+              const currentPages = prev.pages && prev.pages.length > 0 ? prev.pages : defaultCatalogueSettings.pages;
+              const map = new Map<string, CataloguePage>();
+              pagesResult.forEach((p) => map.set(p.id, p));
 
-            const merged = currentPages.map((page) => {
-              const remote = map.get(page.id);
-              if (remote) {
-                map.delete(remote.id);
-                return { ...page, ...remote };
-              }
-              return page;
+              const merged = currentPages.map((page) => {
+                const remote = map.get(page.id);
+                if (remote) {
+                  map.delete(remote.id);
+                  return { ...page, ...remote };
+                }
+                return page;
+              });
+
+              map.forEach((extra) => {
+                if (!merged.some((p) => p.id === extra.id)) {
+                  merged.push(extra);
+                }
+              });
+
+              merged.sort((a, b) => (a.pageNumber ?? 0) - (b.pageNumber ?? 0));
+              const updated = { ...prev, pages: merged };
+              safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
+              return updated;
             });
+          })
+          .catch(() => {});
 
-            map.forEach((extra) => {
-              if (!merged.some((p) => p.id === extra.id)) {
-                merged.push(extra);
-              }
+        fetchSupabaseCatalogueSettings()
+          .then((catSettings) => {
+            if (!isMounted || !catSettings) return;
+            setCatalogueSettingsState((prev) => {
+              const mergedCat: CatalogueSettings = {
+                ...prev,
+                ...catSettings,
+                pages: catSettings.pages?.length ? catSettings.pages : prev.pages,
+              };
+              safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(mergedCat));
+              return mergedCat;
             });
+          })
+          .catch(() => {});
 
-            merged.sort((a, b) => (a.pageNumber ?? 0) - (b.pageNumber ?? 0));
-            const updated = { ...prev, pages: merged };
-            safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
-            return updated;
-          });
-        }
-
-        // Check if we have data to display
-        const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
-        const hasLoadedData = hasAnyRemoteData || hasOfflineCache;
-
-        // Check if Supabase responded to our queries (fulfilled promises mean the endpoint is live and reachable)
-        const isSupabaseReachable =
-          settingsRes.status === 'fulfilled' ||
-          productsRes.status === 'fulfilled' ||
-          categoriesRes.status === 'fulfilled' ||
-          pagesRes.status === 'fulfilled';
-
-        if (!hasLoadedData && isOffline) {
+        // ONLY trigger offline error screen if device is genuinely OFFLINE with NO cached data!
+        const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+        if (isOffline && !hasAnyRemoteData && !hasAnyCachedStoreData()) {
           setIsSupabaseConnected(false);
-          setInitialSyncError('No internet connection. Please check your network connection.');
+          setInitialSyncError('You are currently offline. Please reconnect your mobile data or Wi-Fi and tap retry.');
           setInitialSyncStatus('error');
           return;
         }
 
         if (!isMounted) return;
 
-        // Database verified and online
-        setIsSupabaseConnected(isSupabaseReachable || hasAnyRemoteData);
-        setSupabaseError(null);
+        // Internet is ON! Under NO circumstances should error screen show when internet is working!
+        setIsSupabaseConnected(true);
+        setInitialSyncError(null);
         setInitialSyncStatus('success');
       } catch (err: any) {
         if (isMounted) {
-          const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
-          if (!hasOfflineCache) {
+          const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+          if (isOffline && !hasAnyCachedStoreData()) {
             setIsSupabaseConnected(false);
-            setInitialSyncError(
-              isOffline
-                ? 'No internet connection. Please check your network connection.'
-                : 'Unable to connect to the store database. Please check your connection and retry.'
-            );
+            setInitialSyncError('You are currently offline. Please reconnect your mobile data or Wi-Fi and tap retry.');
             setInitialSyncStatus('error');
           } else {
-            setIsSupabaseConnected(!isOffline);
-            setSupabaseError(null);
+            // Internet is ON! Never show error screen!
+            setIsSupabaseConnected(true);
             setInitialSyncError(null);
             setInitialSyncStatus('success');
           }
@@ -573,6 +591,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     initSupabaseSync();
+
+    // Listen for window online/offline events for dynamic reconnection
+    const handleOnline = () => {
+      setIsSupabaseConnected(true);
+      setInitialSyncError(null);
+      setInitialSyncStatus('success');
+      setRetryTrigger((prev) => prev + 1);
+    };
+    const handleOffline = () => {
+      setIsSupabaseConnected(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
     // Setup Supabase Real-Time Channel Listener
     const channel = supabase
@@ -693,6 +725,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     return () => {
       isMounted = false;
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
       supabase.removeChannel(channel);
     };
   }, [retryTrigger]);
