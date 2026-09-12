@@ -280,11 +280,13 @@ const hasAnyCachedStoreData = (): boolean => {
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // If store data is already in cache, start immediately with 'success' (0ms instant render).
+  // Always start with 'loading' on page load / reload so user sees the skeleton loader
+  // and NEVER sees the fixed demo data.
   // Error state is strictly reserved for genuine offline state with zero cached data.
   const [initialSyncStatus, setInitialSyncStatus] = useState<'loading' | 'success' | 'error'>(() => {
-    if (hasAnyCachedStoreData()) return 'success';
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) return 'error';
+    if (typeof navigator !== 'undefined' && navigator.onLine === false && !hasAnyCachedStoreData()) {
+      return 'error';
+    }
     return 'loading';
   });
   const [initialSyncError, setInitialSyncError] = useState<string | null>(null);
@@ -428,11 +430,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const initSupabaseSync = async () => {
       try {
-        // If we don't have cached real data, show the skeleton loader while syncing
-        if (!hasAnyCachedStoreData()) {
-          setInitialSyncStatus('loading');
-        }
+        setInitialSyncStatus('loading');
         setInitialSyncError(null);
+        const startTime = Date.now();
 
         // FAST-PATH: Fetch critical initial datasets in parallel (Store Branding, Products, Categories)
         // No artificial timeout cutting off slow cellular mobile data
@@ -565,6 +565,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setInitialSyncError('You are currently offline. Please reconnect your mobile data or Wi-Fi and tap retry.');
           setInitialSyncStatus('error');
           return;
+        }
+
+        // Ensure a minimum smooth skeleton pulse (350ms) so user gets a clean transition
+        const elapsed = Date.now() - startTime;
+        if (elapsed < 350) {
+          await new Promise((r) => setTimeout(r, 350 - elapsed));
         }
 
         if (!isMounted) return;

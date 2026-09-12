@@ -196,4 +196,176 @@ export const FullPageSkeletonLoader: React.FC<FullPageSkeletonLoaderProps> = ({
   );
 };
 
+/* -------------------------------------------------------------------------- */
+/* Page-Specific Skeleton Loaders for Instant Tab Switching Transitions      */
+/* -------------------------------------------------------------------------- */
+
+export const AboutPageSkeleton: React.FC = () => {
+  return (
+    <div className="py-4 lg:py-8 px-4 max-w-5xl mx-auto space-y-6 animate-pulse">
+      {/* Hero Banner Skeleton */}
+      <div className="bg-white border border-slate-200/80 rounded-3xl p-6 md:p-8 space-y-4 shadow-sm">
+        <div className="w-28 h-5 bg-slate-200/90 rounded-full"></div>
+        <div className="w-3/4 h-8 bg-slate-200 rounded-xl"></div>
+        <div className="w-2/3 h-4 bg-slate-100 rounded-md"></div>
+        <div className="w-full h-16 bg-slate-100/80 rounded-xl pt-2"></div>
+      </div>
+
+      {/* Metrics Grid Skeleton */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="bg-white border border-slate-200/80 rounded-2xl p-4 text-center space-y-2 shadow-xs">
+            <div className="w-16 h-7 bg-slate-200 rounded-lg mx-auto"></div>
+            <div className="w-20 h-3 bg-slate-100 rounded mx-auto"></div>
+          </div>
+        ))}
+      </div>
+
+      {/* Story / Factory Block Skeleton */}
+      <div className="bg-white border border-slate-200/80 rounded-3xl p-6 md:p-8 space-y-4 shadow-sm">
+        <div className="w-40 h-6 bg-slate-200 rounded-lg"></div>
+        <div className="space-y-2.5">
+          <div className="w-full h-3.5 bg-slate-100 rounded"></div>
+          <div className="w-11/12 h-3.5 bg-slate-100 rounded"></div>
+          <div className="w-4/5 h-3.5 bg-slate-100 rounded"></div>
+        </div>
+        <div className="w-full h-48 bg-slate-100 rounded-2xl mt-4"></div>
+      </div>
+    </div>
+  );
+};
+
+export const ProductsPageSkeleton: React.FC = () => {
+  return (
+    <div className="py-4 lg:py-10 px-4 lg:px-8 max-w-md lg:max-w-7xl mx-auto space-y-4 lg:space-y-8 animate-pulse">
+      {/* Search Bar Skeleton */}
+      <div className="w-full h-11 lg:h-14 bg-white border border-slate-200/90 rounded-xl lg:rounded-2xl shadow-xs flex items-center px-4 gap-3">
+        <div className="w-4 h-4 rounded-full bg-slate-200"></div>
+        <div className="w-48 h-3.5 bg-slate-100 rounded"></div>
+      </div>
+
+      {/* Category Pills Skeleton */}
+      <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="w-28 h-9 bg-white border border-slate-200/80 rounded-xl shrink-0 shadow-xs"></div>
+        ))}
+      </div>
+
+      {/* Title Skeleton */}
+      <div className="flex items-center justify-between pt-1">
+        <div className="space-y-1.5">
+          <div className="w-24 h-3 bg-slate-200 rounded"></div>
+          <div className="w-40 h-6 bg-slate-200 rounded"></div>
+        </div>
+      </div>
+
+      {/* Product Cards Grid Skeleton */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <ProductCardSkeleton key={i} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export const WhyUsPageSkeleton: React.FC = () => {
+  return (
+    <div className="py-6 lg:py-12 px-4 max-w-6xl mx-auto space-y-6 animate-pulse">
+      {/* Header Skeleton */}
+      <div className="text-center max-w-2xl mx-auto space-y-3">
+        <div className="w-28 h-5 bg-slate-200 rounded-full mx-auto"></div>
+        <div className="w-64 h-8 bg-slate-200 rounded-xl mx-auto"></div>
+        <div className="w-80 h-4 bg-slate-100 rounded mx-auto"></div>
+      </div>
+
+      {/* Feature Cards Grid Skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="bg-white border border-slate-200/80 rounded-2xl p-6 space-y-3 shadow-xs">
+            <div className="w-12 h-12 bg-slate-100 rounded-xl"></div>
+            <div className="w-36 h-5 bg-slate-200 rounded"></div>
+            <div className="space-y-1.5">
+              <div className="w-full h-3 bg-slate-100 rounded"></div>
+              <div className="w-4/5 h-3 bg-slate-100 rounded"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export const ContactPageSkeleton: React.FC = () => {
+  return (
+    <div className="py-6 lg:py-12 px-4 max-w-6xl mx-auto space-y-6 animate-pulse">
+      {/* Header Skeleton */}
+      <div className="text-center max-w-2xl mx-auto space-y-2">
+        <div className="w-28 h-5 bg-slate-200 rounded-full mx-auto"></div>
+        <div className="w-60 h-8 bg-slate-200 rounded-xl mx-auto"></div>
+        <div className="w-72 h-4 bg-slate-100 rounded mx-auto"></div>
+      </div>
+
+      {/* Two Columns Grid Skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Contact Info Cards */}
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-white border border-slate-200/80 rounded-2xl p-4 flex items-center gap-4 shadow-xs">
+              <div className="w-10 h-10 bg-slate-100 rounded-xl shrink-0"></div>
+              <div className="space-y-1.5 flex-1">
+                <div className="w-20 h-3 bg-slate-100 rounded"></div>
+                <div className="w-40 h-4 bg-slate-200 rounded"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Form Skeleton */}
+        <div className="bg-white border border-slate-200/80 rounded-3xl p-6 space-y-4 shadow-sm">
+          <div className="w-36 h-5 bg-slate-200 rounded"></div>
+          <div className="w-full h-10 bg-slate-100 rounded-xl"></div>
+          <div className="w-full h-10 bg-slate-100 rounded-xl"></div>
+          <div className="w-full h-24 bg-slate-100 rounded-xl"></div>
+          <div className="w-full h-11 bg-slate-200 rounded-xl"></div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const CataloguePageSkeleton: React.FC = () => {
+  return (
+    <div className="min-h-[80vh] bg-slate-900 text-white flex flex-col items-center justify-center p-4 space-y-6 animate-pulse">
+      {/* Top Bar Skeleton */}
+      <div className="w-full max-w-4xl flex items-center justify-between">
+        <div className="w-48 h-6 bg-slate-800 rounded-lg"></div>
+        <div className="w-32 h-9 bg-slate-800 rounded-xl"></div>
+      </div>
+
+      {/* Flip Book Page Skeleton */}
+      <div className="w-full max-w-3xl aspect-[1/1.4] sm:aspect-[1.4/1] bg-slate-800/80 border border-slate-700/80 rounded-3xl p-6 flex flex-col justify-between shadow-2xl">
+        <div className="space-y-3">
+          <div className="w-24 h-4 bg-slate-700 rounded"></div>
+          <div className="w-2/3 h-8 bg-slate-700 rounded-xl"></div>
+        </div>
+        <div className="w-full h-48 bg-slate-750/60 rounded-2xl flex items-center justify-center">
+          <div className="w-16 h-16 rounded-full bg-slate-700"></div>
+        </div>
+        <div className="flex items-center justify-between pt-4 border-t border-slate-700/60">
+          <div className="w-28 h-4 bg-slate-700 rounded"></div>
+          <div className="w-20 h-4 bg-slate-700 rounded"></div>
+        </div>
+      </div>
+
+      {/* Navigation Controls Bar */}
+      <div className="flex items-center gap-4">
+        <div className="w-10 h-10 bg-slate-800 rounded-full"></div>
+        <div className="w-24 h-6 bg-slate-800 rounded-lg"></div>
+        <div className="w-10 h-10 bg-slate-800 rounded-full"></div>
+      </div>
+    </div>
+  );
+};
+
 

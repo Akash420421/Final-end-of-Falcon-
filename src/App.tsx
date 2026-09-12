@@ -29,7 +29,14 @@ import { ProductDetailsModal } from './components/ProductDetailsModal';
 import { MobileMenuDrawer } from './components/MobileMenuDrawer';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { AdminPanelModal } from './components/AdminPanelModal';
-import { FullPageSkeletonLoader } from './components/SkeletonLoaders';
+import {
+  FullPageSkeletonLoader,
+  AboutPageSkeleton,
+  ProductsPageSkeleton,
+  WhyUsPageSkeleton,
+  ContactPageSkeleton,
+  CataloguePageSkeleton,
+} from './components/SkeletonLoaders';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CatalogueView } from './components/CatalogueView';
 import { SEOHead } from './components/SEOHead';
@@ -80,6 +87,25 @@ function MainContent() {
       return 'PRODUCTS';
     return 'HOME';
   }, [location.pathname]);
+
+  // Tab transition skeleton effect for seamless per-page skeleton loading
+  const [tabLoading, setTabLoading] = useState<boolean>(false);
+  const prevTabRef = React.useRef<NavigationTab>(activeTab);
+
+  useEffect(() => {
+    if (prevTabRef.current !== activeTab) {
+      prevTabRef.current = activeTab;
+      if (activeTab !== 'HOME') {
+        setTabLoading(true);
+        const timer = setTimeout(() => {
+          setTabLoading(false);
+        }, 300);
+        return () => clearTimeout(timer);
+      } else {
+        setTabLoading(false);
+      }
+    }
+  }, [activeTab]);
 
   // Derive selected category ID from URL
   const selectedCategoryId = useMemo(() => {
@@ -357,136 +383,148 @@ function MainContent() {
 
       {/* Main Content Sections based on Active Tab / Route */}
       <main className={`flex-1 w-full ${activeTab === 'CATALOGUE' ? 'pb-0 bg-slate-950' : 'pb-10'}`}>
-        {activeTab === 'HOME' && (
+        {tabLoading ? (
+          <div>
+            {activeTab === 'ABOUT' && <AboutPageSkeleton />}
+            {activeTab === 'PRODUCTS' && <ProductsPageSkeleton />}
+            {activeTab === 'CATALOGUE' && <CataloguePageSkeleton />}
+            {activeTab === 'WHY_US' && <WhyUsPageSkeleton />}
+            {activeTab === 'CONTACT' && <ContactPageSkeleton />}
+          </div>
+        ) : (
           <>
-            {/* Hero Section */}
-            <HeroSection
-              onViewProducts={() => handleSelectCategory(null)}
-              onViewCatalogue={() => {
-                if (location.pathname === '/catalogue') {
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                } else {
-                  navigate('/catalogue');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-              }}
-            />
+            {activeTab === 'HOME' && (
+              <>
+                {/* Hero Section */}
+                <HeroSection
+                  onViewProducts={() => handleSelectCategory(null)}
+                  onViewCatalogue={() => {
+                    if (location.pathname === '/catalogue') {
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    } else {
+                      navigate('/catalogue');
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                />
 
-            {/* Search Bar */}
-            <SearchBar
-              searchQuery={searchQuery}
-              onSearchChange={(q) => setSearchQuery(q)}
-              onSelectCategory={(catId) => {
-                if (catId === 'all') {
-                  handleSelectCategory(null);
-                } else {
-                  handleSelectCategory(catId);
-                }
-              }}
-              onSearchSubmit={(e) => {
-                e.preventDefault();
-                if (location.pathname === '/products') {
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                } else {
-                  navigate('/products');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-              }}
-            />
+                {/* Search Bar */}
+                <SearchBar
+                  searchQuery={searchQuery}
+                  onSearchChange={(q) => setSearchQuery(q)}
+                  onSelectCategory={(catId) => {
+                    if (catId === 'all') {
+                      handleSelectCategory(null);
+                    } else {
+                      handleSelectCategory(catId);
+                    }
+                  }}
+                  onSearchSubmit={(e) => {
+                    e.preventDefault();
+                    if (location.pathname === '/products') {
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    } else {
+                      navigate('/products');
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                />
 
-            {/* Browse Categories */}
-            <div id="categories-section">
-              <CategoryCarousel
-                selectedCategory={selectedCategoryId}
-                onSelectCategory={handleSelectCategory}
-              />
-            </div>
+                {/* Browse Categories */}
+                <div id="categories-section">
+                  <CategoryCarousel
+                    selectedCategory={selectedCategoryId}
+                    onSelectCategory={handleSelectCategory}
+                  />
+                </div>
 
-            {/* Trust & Benefits Strip */}
-            <TrustBenefitsStrip />
+                {/* Trust & Benefits Strip */}
+                <TrustBenefitsStrip />
 
-            {/* Featured Products Carousel */}
-            <div id="featured-products">
-              <FeaturedProducts
+                {/* Featured Products Carousel */}
+                <div id="featured-products">
+                  <FeaturedProducts
+                    products={filteredProducts}
+                    selectedCategoryName={selectedCategoryObj?.title}
+                    searchQuery={searchQuery}
+                    onSelectProduct={handleSelectProduct}
+                    onOpenWhatsApp={(prod) => handleOpenWhatsApp(prod)}
+                    onViewAllProducts={() => {
+                      setSearchQuery('');
+                      handleSelectCategory(null);
+                    }}
+                  />
+                </div>
+
+                {/* Bulk / Dealer Orders CTA */}
+                <BulkDealerCTA />
+
+                {/* About Falcon Electrics */}
+                <AboutFalcon />
+
+                {/* Mobile-Only Factory Location Map Card (Directly below About Us on Mobile screens, hidden on Desktop) */}
+                <section className="block lg:hidden py-4 px-4 max-w-md mx-auto">
+                  <FactoryMapCard />
+                </section>
+
+                {/* Why Choose Us (Hidden on mobile Home scroll; shown on desktop & when Why Us tab is clicked) */}
+                <div className="hidden lg:block">
+                  <WhyChooseUs />
+                </div>
+
+                {/* Contact Section with integrated Google Map (Hidden on mobile Home scroll; shown on desktop & when Contact tab is clicked) */}
+                <div className="hidden lg:block">
+                  <ContactSection
+                    onOpenPhoneModal={handleOpenPhone}
+                    onOpenWhatsApp={() => handleOpenWhatsApp()}
+                  />
+                </div>
+              </>
+            )}
+
+            {activeTab === 'PRODUCTS' && (
+              <CategoryProductsView
                 products={filteredProducts}
-                selectedCategoryName={selectedCategoryObj?.title}
+                selectedCategoryId={selectedCategoryId}
+                onSelectCategory={handleSelectCategory}
                 searchQuery={searchQuery}
+                onSearchChange={(q) => setSearchQuery(q)}
                 onSelectProduct={handleSelectProduct}
                 onOpenWhatsApp={(prod) => handleOpenWhatsApp(prod)}
-                onViewAllProducts={() => {
-                  setSearchQuery('');
-                  handleSelectCategory(null);
-                }}
               />
-            </div>
+            )}
 
-            {/* Bulk / Dealer Orders CTA */}
-            <BulkDealerCTA />
-
-            {/* About Falcon Electrics */}
-            <AboutFalcon />
-
-            {/* Mobile-Only Factory Location Map Card (Directly below About Us on Mobile screens, hidden on Desktop) */}
-            <section className="block lg:hidden py-4 px-4 max-w-md mx-auto">
-              <FactoryMapCard />
-            </section>
-
-            {/* Why Choose Us (Hidden on mobile Home scroll; shown on desktop & when Why Us tab is clicked) */}
-            <div className="hidden lg:block">
-              <WhyChooseUs />
-            </div>
-
-            {/* Contact Section with integrated Google Map (Hidden on mobile Home scroll; shown on desktop & when Contact tab is clicked) */}
-            <div className="hidden lg:block">
-              <ContactSection
-                onOpenPhoneModal={handleOpenPhone}
-                onOpenWhatsApp={() => handleOpenWhatsApp()}
+            {activeTab === 'CATALOGUE' && (
+              <CatalogueView
+                onOpenWhatsApp={(prod) => handleOpenWhatsApp(prod)}
               />
-            </div>
+            )}
+
+            {activeTab === 'ABOUT' && (
+              <div className="py-2">
+                <AboutFalcon initialExpanded={true} />
+                <TrustBenefitsStrip />
+                <BulkDealerCTA />
+              </div>
+            )}
+
+            {activeTab === 'WHY_US' && (
+              <div className="py-2">
+                <WhyChooseUs />
+                <TrustBenefitsStrip />
+                <BulkDealerCTA />
+              </div>
+            )}
+
+            {activeTab === 'CONTACT' && (
+              <div className="py-2">
+                <ContactSection
+                  onOpenPhoneModal={handleOpenPhone}
+                  onOpenWhatsApp={() => handleOpenWhatsApp()}
+                />
+              </div>
+            )}
           </>
-        )}
-
-        {activeTab === 'PRODUCTS' && (
-          <CategoryProductsView
-            products={filteredProducts}
-            selectedCategoryId={selectedCategoryId}
-            onSelectCategory={handleSelectCategory}
-            searchQuery={searchQuery}
-            onSearchChange={(q) => setSearchQuery(q)}
-            onSelectProduct={handleSelectProduct}
-            onOpenWhatsApp={(prod) => handleOpenWhatsApp(prod)}
-          />
-        )}
-
-        {activeTab === 'CATALOGUE' && (
-          <CatalogueView
-            onOpenWhatsApp={(prod) => handleOpenWhatsApp(prod)}
-          />
-        )}
-
-        {activeTab === 'ABOUT' && (
-          <div className="py-2">
-            <AboutFalcon initialExpanded={true} />
-            <TrustBenefitsStrip />
-            <BulkDealerCTA />
-          </div>
-        )}
-
-        {activeTab === 'WHY_US' && (
-          <div className="py-2">
-            <WhyChooseUs />
-            <TrustBenefitsStrip />
-            <BulkDealerCTA />
-          </div>
-        )}
-
-        {activeTab === 'CONTACT' && (
-          <div className="py-2">
-            <ContactSection
-              onOpenPhoneModal={handleOpenPhone}
-              onOpenWhatsApp={() => handleOpenWhatsApp()}
-            />
-          </div>
         )}
       </main>
 
