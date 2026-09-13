@@ -276,12 +276,47 @@ export const CataloguePageSkeleton: React.FC = () => {
 
 export const AboutPageSkeleton: React.FC = () => {
   return (
-    <div className="py-4 lg:py-8 px-4 max-w-5xl mx-auto space-y-6">
-      <div className="bg-white border border-slate-200/80 rounded-3xl p-6 md:p-8 space-y-4 shadow-sm">
-        <div className="w-28 h-5 skeleton-shimmer rounded-full" />
-        <div className="w-3/4 h-8 skeleton-shimmer rounded-xl" />
-        <div className="w-2/3 h-4 skeleton-shimmer rounded-md" />
-        <div className="w-full h-16 skeleton-shimmer rounded-xl pt-2" />
+    <div className="py-6 lg:py-12 px-4 lg:px-8 max-w-md lg:max-w-7xl mx-auto space-y-4">
+      <div className="bg-white rounded-2xl lg:rounded-3xl border border-slate-200/90 shadow-sm lg:shadow-md p-5 lg:p-10 space-y-6">
+        {/* About Header */}
+        <div className="space-y-2">
+          <div className="w-24 h-4 rounded skeleton-shimmer" />
+          <div className="w-3/4 sm:w-1/2 h-7 sm:h-9 rounded-xl skeleton-shimmer" />
+        </div>
+
+        {/* Two-Column Grid for Content and Stats */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10">
+          {/* Left Column (7 cols): Paragraphs and Quote */}
+          <div className="lg:col-span-7 space-y-4">
+            <div className="space-y-2">
+              <div className="w-full h-4 rounded skeleton-shimmer" />
+              <div className="w-11/12 h-4 rounded skeleton-shimmer" />
+              <div className="w-4/5 h-4 rounded skeleton-shimmer" />
+            </div>
+            <div className="space-y-2 pt-2">
+              <div className="w-full h-4 rounded skeleton-shimmer" />
+              <div className="w-3/4 h-4 rounded skeleton-shimmer" />
+            </div>
+            {/* Quote Card */}
+            <div className="p-4 bg-red-50/50 rounded-2xl border border-red-100 space-y-2">
+              <div className="w-full h-4 rounded skeleton-shimmer" />
+              <div className="w-2/3 h-4 rounded skeleton-shimmer" />
+            </div>
+          </div>
+
+          {/* Right Column (5 cols): 3 Stat boxes */}
+          <div className="lg:col-span-5 space-y-4">
+            <div className="grid grid-cols-3 gap-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col items-center gap-1.5">
+                  <div className="w-12 h-6 rounded skeleton-shimmer" />
+                  <div className="w-10 h-3 rounded skeleton-shimmer" />
+                </div>
+              ))}
+            </div>
+            <div className="w-full h-32 rounded-2xl skeleton-shimmer" />
+          </div>
+        </div>
       </div>
     </div>
   );

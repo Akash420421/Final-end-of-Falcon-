@@ -77,6 +77,10 @@ function MainContent() {
   const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
 
+  // Dedicated tab-switching skeleton animation state
+  const [isTabSwitching, setIsTabSwitching] = useState(false);
+  const lastActiveTabRef = React.useRef<NavigationTab | null>(null);
+
   // Derive active tab from path
   const activeTab: NavigationTab = useMemo(() => {
     const path = location.pathname;
@@ -88,6 +92,23 @@ function MainContent() {
       return 'PRODUCTS';
     return 'HOME';
   }, [location.pathname]);
+
+  // When switching between tabs (e.g. Home to About or Products), trigger a smooth skeleton loader
+  useEffect(() => {
+    if (lastActiveTabRef.current === null) {
+      lastActiveTabRef.current = activeTab;
+      return;
+    }
+
+    if (lastActiveTabRef.current !== activeTab) {
+      lastActiveTabRef.current = activeTab;
+      setIsTabSwitching(true);
+      const timer = setTimeout(() => {
+        setIsTabSwitching(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab]);
 
   // Derive selected category ID from URL
   const selectedCategoryId = useMemo(() => {
@@ -360,7 +381,7 @@ function MainContent() {
 
       {/* Main Content Sections based on Active Tab / Route */}
       <main className={`flex-1 w-full ${activeTab === 'CATALOGUE' ? 'pb-0 bg-slate-950' : 'pb-10'}`}>
-        {(initialSyncStatus === 'loading' || isLoading) && !hasOfflineCache ? (
+        {initialSyncStatus === 'loading' || isTabSwitching ? (
           <div>
             {activeTab === 'HOME' && <HomeContentSkeleton />}
             {activeTab === 'ABOUT' && <AboutPageSkeleton />}

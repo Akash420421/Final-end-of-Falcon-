@@ -567,10 +567,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           return;
         }
 
-        // Ensure a minimum smooth skeleton pulse (350ms) so user gets a clean transition
+        // Ensure a clear, smooth skeleton loading animation (minimum 400ms) so users
+        // see the dedicated skeleton state on page load / reload and never experience sudden jumps
         const elapsed = Date.now() - startTime;
-        if (elapsed < 350) {
-          await new Promise((r) => setTimeout(r, 350 - elapsed));
+        if (elapsed < 400) {
+          await new Promise((r) => setTimeout(r, 400 - elapsed));
         }
 
         if (!isMounted) return;
