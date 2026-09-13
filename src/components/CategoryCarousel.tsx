@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, memo } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { useFalconStore } from '../context/StoreContext';
 import { ProductVisual } from './ProductVisual';
@@ -8,7 +8,16 @@ interface CategoryCarouselProps {
   onSelectCategory: (categoryId: string) => void;
 }
 
-export const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
+/**
+ * CategoryCarousel Component
+ * 
+ * Renders an interactive auto-sliding and touch-scrollable carousel
+ * of product categories with visual previews and quick navigation.
+ * 
+ * Wrapped in React.memo to prevent unnecessary re-renders when parent
+ * state changes (e.g. search input, tab transitions) while categories remain unchanged.
+ */
+const CategoryCarouselComponent: React.FC<CategoryCarouselProps> = ({
   selectedCategory,
   onSelectCategory,
 }) => {
@@ -183,3 +192,7 @@ export const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
     </section>
   );
 };
+
+CategoryCarouselComponent.displayName = 'CategoryCarousel';
+
+export const CategoryCarousel = memo(CategoryCarouselComponent);

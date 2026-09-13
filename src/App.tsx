@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   BrowserRouter as Router,
   Routes,
@@ -77,10 +77,6 @@ function MainContent() {
   const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
 
-  // Dedicated tab-switching skeleton animation state
-  const [isTabSwitching, setIsTabSwitching] = useState(false);
-  const lastActiveTabRef = React.useRef<NavigationTab | null>(null);
-
   // Derive active tab from path
   const activeTab: NavigationTab = useMemo(() => {
     const path = location.pathname;
@@ -92,23 +88,6 @@ function MainContent() {
       return 'PRODUCTS';
     return 'HOME';
   }, [location.pathname]);
-
-  // When switching between tabs (e.g. Home to About or Products), trigger a smooth skeleton loader
-  useEffect(() => {
-    if (lastActiveTabRef.current === null) {
-      lastActiveTabRef.current = activeTab;
-      return;
-    }
-
-    if (lastActiveTabRef.current !== activeTab) {
-      lastActiveTabRef.current = activeTab;
-      setIsTabSwitching(true);
-      const timer = setTimeout(() => {
-        setIsTabSwitching(false);
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [activeTab]);
 
   // Derive selected category ID from URL
   const selectedCategoryId = useMemo(() => {
@@ -197,7 +176,7 @@ function MainContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSelectCategory = (catId: string | null) => {
+  const handleSelectCategory = useCallback((catId: string | null) => {
     const targetPath = catId ? `/category/${catId}` : '/products';
 
     // 1. De-duplication: If clicking the category already active, don't create duplicate history item
@@ -219,13 +198,18 @@ function MainContent() {
       navigate(targetPath);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, [location.pathname, navigate]);
 
-  const handleSelectProduct = (product: Product) => {
+  const handleSelectProduct = useCallback((product: Product) => {
     const targetPath = `/product/${product.id}`;
     if (location.pathname === targetPath) return;
     navigate(targetPath);
-  };
+  }, [location.pathname, navigate]);
+
+  const handleViewAllProducts = useCallback(() => {
+    setSearchQuery('');
+    handleSelectCategory(null);
+  }, [handleSelectCategory]);
 
   const handleCloseProductModal = () => {
     if (location.pathname.startsWith('/product/')) {
@@ -238,7 +222,7 @@ function MainContent() {
   };
 
   // WhatsApp Handler
-  const handleOpenWhatsApp = (productOrName?: Product | string | null) => {
+  const handleOpenWhatsApp = useCallback((productOrName?: Product | string | null) => {
     const rawPhone = companyDetails?.whatsapp || companyDetails?.phone || '+91 97175 49515';
     
     if (productOrName && typeof productOrName === 'object') {
@@ -260,7 +244,7 @@ function MainContent() {
     const brand = companyDetails?.brandName || 'Falcon Electrics';
     const messageText = `Hello ${company} (${brand}), I am interested in your electrical products. Please share your latest catalogue and wholesale price list.`;
     openWhatsAppChat(rawPhone, messageText);
-  };
+  }, [companyDetails, products]);
 
   // Phone Call Handler
   const handleOpenPhone = () => {
@@ -381,7 +365,7 @@ function MainContent() {
 
       {/* Main Content Sections based on Active Tab / Route */}
       <main className={`flex-1 w-full ${activeTab === 'CATALOGUE' ? 'pb-0 bg-slate-950' : 'pb-10'}`}>
-        {initialSyncStatus === 'loading' || isTabSwitching ? (
+        {initialSyncStatus === 'loading' ? (
           <div>
             {activeTab === 'HOME' && <HomeContentSkeleton />}
             {activeTab === 'ABOUT' && <AboutPageSkeleton />}
@@ -447,11 +431,8 @@ function MainContent() {
                     selectedCategoryName={selectedCategoryObj?.title}
                     searchQuery={searchQuery}
                     onSelectProduct={handleSelectProduct}
-                    onOpenWhatsApp={(prod) => handleOpenWhatsApp(prod)}
-                    onViewAllProducts={() => {
-                      setSearchQuery('');
-                      handleSelectCategory(null);
-                    }}
+                    onOpenWhatsApp={handleOpenWhatsApp}
+                    onViewAllProducts={handleViewAllProducts}
                   />
                 </div>
 

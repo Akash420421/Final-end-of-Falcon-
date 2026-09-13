@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { ArrowRight, Star, Eye, ChevronDown, ChevronUp } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa6';
 import { Product } from '../types';
@@ -13,7 +13,16 @@ interface FeaturedProductsProps {
   searchQuery?: string;
 }
 
-export const FeaturedProducts: React.FC<FeaturedProductsProps> = ({
+/**
+ * FeaturedProducts Component
+ * 
+ * Renders the responsive featured products showcase grid, including desktop expansion,
+ * mobile horizontal card layouts, specifications viewer triggers, and WhatsApp quick-quote.
+ * 
+ * Wrapped in React.memo to ensure zero re-render overhead during tab transitions
+ * or unrelated store state updates when product items remain unchanged.
+ */
+const FeaturedProductsComponent: React.FC<FeaturedProductsProps> = ({
   products,
   onSelectProduct,
   onViewAllProducts,
@@ -268,3 +277,7 @@ export const FeaturedProducts: React.FC<FeaturedProductsProps> = ({
     </section>
   );
 };
+
+FeaturedProductsComponent.displayName = 'FeaturedProducts';
+
+export const FeaturedProducts = memo(FeaturedProductsComponent);
