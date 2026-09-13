@@ -41,6 +41,7 @@ import {
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CatalogueView } from './components/CatalogueView';
 import { SEOHead } from './components/SEOHead';
+import { preloadCatalogueImage } from './components/ProtectedCatalogueCanvas';
 import { initAutomatedHeartbeat } from './services/heartbeatService';
 import { shareProductOnWhatsApp, openWhatsAppChat } from './utils/whatsappHelper';
 import { Phone, X } from 'lucide-react';
@@ -63,11 +64,24 @@ function MainContent() {
     retrySupabaseConnection,
     products,
     categories,
+    catalogueSettings,
     companyDetails,
     isAdminLoggedIn,
     firebaseError,
     retryFirebaseConnection,
   } = useFalconStore();
+
+  // Background Preload: Pre-cache catalogue images globally as soon as data arrives
+  useEffect(() => {
+    if (catalogueSettings?.pages && catalogueSettings.pages.length > 0) {
+      catalogueSettings.pages.forEach((page) => {
+        const url = page.imageUrl || page.image;
+        if (url) {
+          preloadCatalogueImage(url);
+        }
+      });
+    }
+  }, [catalogueSettings?.pages]);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');

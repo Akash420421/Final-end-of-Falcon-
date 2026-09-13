@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { FaWhatsapp } from 'react-icons/fa6';
 import { useFalconStore } from '../context/StoreContext';
 import { CataloguePage } from '../types';
-import { ProtectedCatalogueCanvas } from './ProtectedCatalogueCanvas';
+import { ProtectedCatalogueCanvas, preloadCatalogueImage } from './ProtectedCatalogueCanvas';
 
 interface CatalogueViewProps {
   onOpenWhatsApp?: (message?: string) => void;
@@ -14,6 +14,18 @@ export const CatalogueView: React.FC<CatalogueViewProps> = ({
   const { catalogueSettings, companyDetails } = useFalconStore();
   const pages = catalogueSettings.pages || [];
   const [isBlackout, setIsBlackout] = useState(false);
+
+  // Background Preloader: Preload all catalogue pages immediately so any switch or return is instant (0ms)
+  useEffect(() => {
+    if (pages && pages.length > 0) {
+      pages.forEach((page: CataloguePage) => {
+        const url = page.imageUrl || page.image;
+        if (url) {
+          preloadCatalogueImage(url);
+        }
+      });
+    }
+  }, [pages]);
 
   // Anti-Screenshot, Anti-Print & Window Blur Protection Listener
   useEffect(() => {

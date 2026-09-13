@@ -2,6 +2,22 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { ShieldCheck, ImageIcon } from 'lucide-react';
 import { CataloguePage } from '../types';
 
+// Persistent in-memory image cache: Once loaded, image persists in browser memory for 0ms re-visits
+export const globalImageMemoryCache = new Map<string, HTMLImageElement>();
+
+/**
+ * Preload catalogue image in background so when user views it, it renders in 0ms without any loading screen
+ */
+export const preloadCatalogueImage = (url: string): void => {
+  if (!url || globalImageMemoryCache.has(url)) return;
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    globalImageMemoryCache.set(url, img);
+  };
+  img.src = url;
+};
+
 interface ProtectedCatalogueCanvasProps {
   page: CataloguePage;
   index: number;
@@ -19,13 +35,23 @@ export const ProtectedCatalogueCanvas: React.FC<ProtectedCatalogueCanvasProps> =
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [hasError, setHasError] = useState(false);
-  const [aspectRatio, setAspectRatio] = useState<number>(3 / 4); // Default 3:4 portrait
-  const imgElementRef = useRef<HTMLImageElement | null>(null);
 
   const imgUrl = page.imageUrl || page.image;
   const hasCustomImage = Boolean(imgUrl && (imgUrl.startsWith('http') || imgUrl.startsWith('data:') || imgUrl.includes('/')));
+
+  // Check if image already exists in global in-memory cache
+  const cachedImg = imgUrl ? globalImageMemoryCache.get(imgUrl) : null;
+  const isPreloaded = Boolean(cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0);
+
+  const [imageLoaded, setImageLoaded] = useState<boolean>(isPreloaded);
+  const [hasError, setHasError] = useState<boolean>(false);
+  const [aspectRatio, setAspectRatio] = useState<number>(() => {
+    if (isPreloaded && cachedImg && cachedImg.naturalHeight > 0) {
+      return cachedImg.naturalWidth / cachedImg.naturalHeight;
+    }
+    return 3 / 4; // Default 3:4 portrait
+  });
+  const imgElementRef = useRef<HTMLImageElement | null>(isPreloaded && cachedImg ? cachedImg : null);
 
   // Render to canvas
   const drawToCanvas = useCallback(() => {
@@ -117,11 +143,25 @@ export const ProtectedCatalogueCanvas: React.FC<ProtectedCatalogueCanvasProps> =
   useEffect(() => {
     if (!hasCustomImage || !imgUrl) return;
 
+    // If image is already cached, reuse immediately without network request
+    const existingImg = globalImageMemoryCache.get(imgUrl);
+    if (existingImg && existingImg.complete && existingImg.naturalWidth > 0) {
+      imgElementRef.current = existingImg;
+      if (existingImg.naturalHeight > 0) {
+        setAspectRatio(existingImg.naturalWidth / existingImg.naturalHeight);
+      }
+      setImageLoaded(true);
+      setHasError(false);
+      return;
+    }
+
     let isMounted = true;
     const img = new Image();
     img.crossOrigin = 'anonymous';
 
     img.onload = () => {
+      // Save in persistent global memory cache for 0ms future visits
+      globalImageMemoryCache.set(imgUrl, img);
       if (!isMounted) return;
       imgElementRef.current = img;
       if (img.naturalWidth && img.naturalHeight) {
@@ -232,10 +272,10 @@ export const ProtectedCatalogueCanvas: React.FC<ProtectedCatalogueCanvasProps> =
       {/* 3. Render Canvas or Fallback */}
       {hasCustomImage && !hasError ? (
         <div
-          className={`w-full relative overflow-hidden flex items-center justify-center transition-opacity duration-200 ${
-            isBlackout ? 'opacity-0 bg-slate-950' : 'opacity-100 bg-slate-900'
+          className={`w-full relative overflow-hidden flex items-center justify-center ${
+            isBlackout ? 'opacity-0 bg-slate-950' : 'opacity-100 bg-white'
           }`}
-          style={{ minHeight: '320px' }}
+          style={{ minHeight: imageLoaded ? 'auto' : '320px' }}
         >
           {/* Dark Shimmer Placeholder until image is fully loaded & drawn to canvas */}
           {!imageLoaded && (
@@ -254,7 +294,7 @@ export const ProtectedCatalogueCanvas: React.FC<ProtectedCatalogueCanvasProps> =
 
           <canvas
             ref={canvasRef}
-            className={`w-full h-auto block select-none pointer-events-none rounded-xl transition-opacity duration-300 ${
+            className={`w-full h-auto block select-none pointer-events-none rounded-xl ${
               imageLoaded ? 'opacity-100' : 'opacity-0 absolute inset-0'
             }`}
             onContextMenu={(e) => e.preventDefault()}
