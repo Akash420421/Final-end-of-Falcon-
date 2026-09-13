@@ -46,13 +46,13 @@ export const ProductVisual: React.FC<ProductVisualProps> = ({
   if (isCustomImage) {
     const fitClass = effectiveFit === 'contain' ? 'object-contain' : effectiveFit === 'fill' ? 'object-fill' : 'object-cover';
     return (
-      <div className={`relative flex items-center justify-center ${containerSize} ${className} overflow-hidden`}>
+      <div className={`relative flex items-center justify-center ${containerSize} ${className} bg-transparent`}>
         <img
           src={type}
           alt="Product or Category visual"
           loading="lazy"
           referrerPolicy="no-referrer"
-          className={`w-full h-full ${fitClass} transition-transform duration-300 select-none`}
+          className={`w-full h-full ${fitClass} select-none`}
         />
       </div>
     );

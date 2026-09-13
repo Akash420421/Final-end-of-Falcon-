@@ -30,6 +30,7 @@ import { MobileMenuDrawer } from './components/MobileMenuDrawer';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { AdminPanelModal } from './components/AdminPanelModal';
 import {
+  HomeContentSkeleton,
   FullPageSkeletonLoader,
   AboutPageSkeleton,
   ProductsPageSkeleton,
@@ -87,25 +88,6 @@ function MainContent() {
       return 'PRODUCTS';
     return 'HOME';
   }, [location.pathname]);
-
-  // Tab transition skeleton effect for seamless per-page skeleton loading
-  const [tabLoading, setTabLoading] = useState<boolean>(false);
-  const prevTabRef = React.useRef<NavigationTab>(activeTab);
-
-  useEffect(() => {
-    if (prevTabRef.current !== activeTab) {
-      prevTabRef.current = activeTab;
-      if (activeTab !== 'HOME') {
-        setTabLoading(true);
-        const timer = setTimeout(() => {
-          setTabLoading(false);
-        }, 300);
-        return () => clearTimeout(timer);
-      } else {
-        setTabLoading(false);
-      }
-    }
-  }, [activeTab]);
 
   // Derive selected category ID from URL
   const selectedCategoryId = useMemo(() => {
@@ -264,13 +246,8 @@ function MainContent() {
     setIsPhoneModalOpen(true);
   };
 
-  // Full Page Skeleton Loader while critical database data is fetching
-  if (initialSyncStatus === 'loading' || isLoading) {
-    return <FullPageSkeletonLoader />;
-  }
-
-  // Coordinated Error Screen with retry and cache fallback if initial sync failed
-  if (initialSyncStatus === 'error') {
+  // Coordinated Error Screen with retry and cache fallback ONLY if device is genuinely offline with no cache
+  if (initialSyncStatus === 'error' && !hasOfflineCache) {
     return (
       <FullPageSkeletonLoader
         error={initialSyncError}
@@ -383,8 +360,9 @@ function MainContent() {
 
       {/* Main Content Sections based on Active Tab / Route */}
       <main className={`flex-1 w-full ${activeTab === 'CATALOGUE' ? 'pb-0 bg-slate-950' : 'pb-10'}`}>
-        {tabLoading ? (
+        {(initialSyncStatus === 'loading' || isLoading) && !hasOfflineCache ? (
           <div>
+            {activeTab === 'HOME' && <HomeContentSkeleton />}
             {activeTab === 'ABOUT' && <AboutPageSkeleton />}
             {activeTab === 'PRODUCTS' && <ProductsPageSkeleton />}
             {activeTab === 'CATALOGUE' && <CataloguePageSkeleton />}

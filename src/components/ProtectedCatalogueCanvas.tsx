@@ -199,7 +199,7 @@ export const ProtectedCatalogueCanvas: React.FC<ProtectedCatalogueCanvasProps> =
   return (
     <div
       ref={containerRef}
-      className="w-full max-w-2xl bg-white rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-slate-800 transition-all relative group flex flex-col items-center justify-center catalogue-secure-zone select-none"
+      className="w-full max-w-2xl bg-slate-900 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-slate-800 transition-all relative group flex flex-col items-center justify-center catalogue-secure-zone select-none"
       style={{
         WebkitTouchCallout: 'none',
         WebkitUserSelect: 'none',
@@ -232,14 +232,31 @@ export const ProtectedCatalogueCanvas: React.FC<ProtectedCatalogueCanvasProps> =
       {/* 3. Render Canvas or Fallback */}
       {hasCustomImage && !hasError ? (
         <div
-          className={`w-full relative overflow-hidden flex items-center justify-center transition-opacity duration-75 ${
-            isBlackout ? 'opacity-0 bg-slate-950' : 'opacity-100 bg-white'
+          className={`w-full relative overflow-hidden flex items-center justify-center transition-opacity duration-200 ${
+            isBlackout ? 'opacity-0 bg-slate-950' : 'opacity-100 bg-slate-900'
           }`}
           style={{ minHeight: '320px' }}
         >
+          {/* Dark Shimmer Placeholder until image is fully loaded & drawn to canvas */}
+          {!imageLoaded && (
+            <div className="w-full aspect-[1/1.4] sm:aspect-[1.4/1] skeleton-shimmer-dark rounded-xl flex flex-col items-center justify-center text-slate-500 gap-3 p-6 text-center">
+              <ShieldCheck className="w-8 h-8 text-slate-600 animate-pulse" />
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-slate-400 tracking-wide">
+                  Loading Protected Page {page.pageNumber || index + 1}...
+                </p>
+                <p className="text-[10px] text-slate-500">
+                  {page.title || brandName}
+                </p>
+              </div>
+            </div>
+          )}
+
           <canvas
             ref={canvasRef}
-            className="w-full h-auto block select-none pointer-events-none rounded-xl"
+            className={`w-full h-auto block select-none pointer-events-none rounded-xl transition-opacity duration-300 ${
+              imageLoaded ? 'opacity-100' : 'opacity-0 absolute inset-0'
+            }`}
             onContextMenu={(e) => e.preventDefault()}
           />
         </div>
