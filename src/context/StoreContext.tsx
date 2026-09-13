@@ -154,6 +154,7 @@ interface StoreContextType {
   initialSyncStatus: 'loading' | 'success' | 'error';
   initialSyncError: string | null;
   hasOfflineCache: boolean;
+  isCatalogueLoaded: boolean;
   isFirebaseConnected: boolean; // Alias for backward-compatibility with existing UI components
   isSupabaseConnected: boolean;
   firebaseError: string | null; // Alias for backward-compatibility with existing UI components
@@ -383,6 +384,19 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return defaultCatalogueSettings;
   });
 
+  const [isCatalogueLoaded, setIsCatalogueLoaded] = useState<boolean>(() => {
+    try {
+      const saved = safeLocalStorageGet('falcon_catalogue_settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed.pages) && parsed.pages.some((p: any) => p.imageUrl || p.image)) {
+          return true;
+        }
+      }
+    } catch {}
+    return false;
+  });
+
   const isSeedingRef = useRef(false);
   const [retryTrigger, setRetryTrigger] = useState(0);
 
@@ -434,16 +448,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setInitialSyncError(null);
         const startTime = Date.now();
 
-        // FAST-PATH: Fetch critical initial datasets in parallel (Store Branding, Products, Categories)
+        // FAST-PATH: Fetch critical initial datasets in parallel (Store Branding, Products, Categories, Catalogue)
         // No artificial timeout cutting off slow cellular mobile data
         const [
           settingsRes,
           productsRes,
           categoriesRes,
+          cataloguePagesRes,
+          catalogueSettingsRes,
         ] = await Promise.allSettled([
           fetchSupabaseStoreSettingsCore(),
           fetchSupabaseProducts(),
           fetchSupabaseCategories(),
+          fetchSupabaseCataloguePages(),
+          fetchSupabaseCatalogueSettings(),
         ]);
 
         if (!isMounted) return;
@@ -451,11 +469,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const settingsResult = settingsRes.status === 'fulfilled' ? settingsRes.value : null;
         const productsResult = productsRes.status === 'fulfilled' ? productsRes.value : null;
         const categoriesResult = categoriesRes.status === 'fulfilled' ? categoriesRes.value : null;
+        const cataloguePagesResult = cataloguePagesRes.status === 'fulfilled' ? cataloguePagesRes.value : null;
+        const catalogueSettingsResult = catalogueSettingsRes.status === 'fulfilled' ? catalogueSettingsRes.value : null;
 
         const hasAnyRemoteData = Boolean(
           settingsResult ||
           (productsResult && productsResult.length > 0) ||
-          (categoriesResult && categoriesResult.length > 0)
+          (categoriesResult && categoriesResult.length > 0) ||
+          (cataloguePagesResult && cataloguePagesResult.length > 0)
         );
 
         // 1. Process Core Store Settings
@@ -511,52 +532,50 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           safeLocalStorageSet('falcon_categories', JSON.stringify(sortedCats));
         }
 
-        // 4. BACKGROUND LOAD: Catalogue Pages & Settings (non-blocking for UI)
-        fetchSupabaseCataloguePages()
-          .then((pagesResult) => {
-            if (!isMounted || !pagesResult || pagesResult.length === 0) return;
-            setCatalogueSettingsState((prev) => {
-              const currentPages = prev.pages && prev.pages.length > 0 ? prev.pages : defaultCatalogueSettings.pages;
-              const map = new Map<string, CataloguePage>();
-              pagesResult.forEach((p) => map.set(p.id, p));
+        // 4. Process Catalogue Pages (Save real uploaded catalogue pages & images)
+        if (cataloguePagesResult && cataloguePagesResult.length > 0) {
+          markDataInitialized();
+          setCatalogueSettingsState((prev) => {
+            const currentPages = prev.pages && prev.pages.length > 0 ? prev.pages : defaultCatalogueSettings.pages;
+            const map = new Map<string, CataloguePage>();
+            cataloguePagesResult.forEach((p) => map.set(p.id, p));
 
-              const merged = currentPages.map((page) => {
-                const remote = map.get(page.id);
-                if (remote) {
-                  map.delete(remote.id);
-                  return { ...page, ...remote };
-                }
-                return page;
-              });
-
-              map.forEach((extra) => {
-                if (!merged.some((p) => p.id === extra.id)) {
-                  merged.push(extra);
-                }
-              });
-
-              merged.sort((a, b) => (a.pageNumber ?? 0) - (b.pageNumber ?? 0));
-              const updated = { ...prev, pages: merged };
-              safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
-              return updated;
+            const merged = currentPages.map((page) => {
+              const remote = map.get(page.id);
+              if (remote) {
+                map.delete(remote.id);
+                return { ...page, ...remote };
+              }
+              return page;
             });
-          })
-          .catch(() => {});
 
-        fetchSupabaseCatalogueSettings()
-          .then((catSettings) => {
-            if (!isMounted || !catSettings) return;
-            setCatalogueSettingsState((prev) => {
-              const mergedCat: CatalogueSettings = {
-                ...prev,
-                ...catSettings,
-                pages: catSettings.pages?.length ? catSettings.pages : prev.pages,
-              };
-              safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(mergedCat));
-              return mergedCat;
+            map.forEach((extra) => {
+              if (!merged.some((p) => p.id === extra.id)) {
+                merged.push(extra);
+              }
             });
-          })
-          .catch(() => {});
+
+            merged.sort((a, b) => (a.pageNumber ?? 0) - (b.pageNumber ?? 0));
+            const updated = { ...prev, pages: merged };
+            safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
+            return updated;
+          });
+        }
+
+        // 5. Process Catalogue Settings
+        if (catalogueSettingsResult) {
+          setCatalogueSettingsState((prev) => {
+            const mergedCat: CatalogueSettings = {
+              ...prev,
+              ...catalogueSettingsResult,
+              pages: catalogueSettingsResult.pages?.length ? catalogueSettingsResult.pages : prev.pages,
+            };
+            safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(mergedCat));
+            return mergedCat;
+          });
+        }
+
+        setIsCatalogueLoaded(true);
 
         // ONLY trigger offline error screen if device is genuinely OFFLINE with NO cached data!
         const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
@@ -582,6 +601,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setInitialSyncStatus('success');
       } catch (err: any) {
         if (isMounted) {
+          setIsCatalogueLoaded(true);
           const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
           if (isOffline && !hasAnyCachedStoreData()) {
             setIsSupabaseConnected(false);
@@ -1214,6 +1234,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         initialSyncStatus,
         initialSyncError,
         hasOfflineCache,
+        isCatalogueLoaded,
         isFirebaseConnected: isSupabaseConnected,
         isSupabaseConnected,
         firebaseError: supabaseError,

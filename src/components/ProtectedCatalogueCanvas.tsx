@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { ShieldCheck, ImageIcon } from 'lucide-react';
+import { ShieldCheck, ImageOff } from 'lucide-react';
 import { CataloguePage } from '../types';
 
 // Persistent in-memory image cache: Once loaded, image persists in browser memory for 0ms re-visits
@@ -24,6 +24,7 @@ interface ProtectedCatalogueCanvasProps {
   showPageNumbers?: boolean;
   brandName?: string;
   isBlackout: boolean;
+  isDataLoading?: boolean;
 }
 
 export const ProtectedCatalogueCanvas: React.FC<ProtectedCatalogueCanvasProps> = ({
@@ -32,6 +33,7 @@ export const ProtectedCatalogueCanvas: React.FC<ProtectedCatalogueCanvasProps> =
   showPageNumbers = true,
   brandName = 'FALCON ELECTRICS',
   isBlackout,
+  isDataLoading = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -300,35 +302,52 @@ export const ProtectedCatalogueCanvas: React.FC<ProtectedCatalogueCanvasProps> =
             onContextMenu={(e) => e.preventDefault()}
           />
         </div>
+      ) : isDataLoading ? (
+        /* STATE 1 — LOADING: The backend/database request has not finished yet.
+           Show the existing "Loading Protected Page" animation.
+           NEVER show the upload/empty-state card while data is loading. */
+        <div className="w-full aspect-[1/1.4] sm:aspect-[1.4/1] skeleton-shimmer-dark rounded-xl flex flex-col items-center justify-center text-slate-500 gap-3 p-6 text-center">
+          <ShieldCheck className="w-8 h-8 text-slate-600 animate-pulse" />
+          <div className="space-y-1">
+            <p className="text-xs font-bold text-slate-400 tracking-wide">
+              Loading Protected Page {page.pageNumber || index + 1}...
+            </p>
+            <p className="text-[10px] text-slate-500">
+              {page.title || brandName}
+            </p>
+          </div>
+        </div>
       ) : (
-        /* Clean Default Fallback when no image is uploaded */
-        <div className="w-full p-6 sm:p-10 text-slate-900 flex flex-col items-center justify-center text-center min-h-[380px] sm:min-h-[460px] bg-gradient-to-b from-white via-slate-50 to-slate-100 select-none">
-          <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mb-2">
-            {brandName}
+        /* STATE 3 — LOADED + NO IMAGE:
+           Rendered only after the backend confirms no image has been uploaded for this page.
+           Never shown while the image/data is still loading. */
+        <div className="w-full aspect-[1/1.4] sm:aspect-[1.4/1] min-h-[360px] sm:min-h-[440px] bg-slate-900/95 flex flex-col items-center justify-center text-center p-6 sm:p-10 select-none">
+          <div className="w-14 h-14 rounded-2xl bg-slate-800/90 border border-slate-700/60 flex items-center justify-center text-slate-400 mb-4 shadow-lg shadow-black/20">
+            <ImageOff className="w-7 h-7 text-slate-400 stroke-[1.75]" />
           </div>
 
-          <div className="w-12 h-1 bg-[#E0183D] rounded-full my-3" />
-
-          <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 mt-1 mb-2">
-            {page.title || `Product Catalogue — Page ${index + 1}`}
+          <h3 className="text-base sm:text-lg font-bold text-slate-100 tracking-tight">
+            Image not available
           </h3>
 
-          {page.subtitle && (
-            <p className="text-xs sm:text-sm font-semibold text-[#E0183D] mb-2">
-              {page.subtitle}
-            </p>
-          )}
+          <p className="text-xs sm:text-sm text-slate-400 max-w-xs sm:max-w-sm mt-1.5 leading-relaxed">
+            No image has been uploaded for this page yet.
+          </p>
 
-          {page.description && (
-            <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto leading-relaxed mb-4">
-              {page.description}
-            </p>
+          {(page.title || page.subtitle) && (
+            <div className="mt-4 pt-3.5 border-t border-slate-800/80 w-full max-w-xs text-center">
+              {page.title && (
+                <p className="text-xs font-semibold text-slate-300">
+                  {page.title}
+                </p>
+              )}
+              {page.subtitle && (
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  {page.subtitle}
+                </p>
+              )}
+            </div>
           )}
-
-          <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-200/80 text-[11px] font-bold text-slate-600">
-            <ImageIcon className="w-3.5 h-3.5 text-slate-500" />
-            <span>Upload original A4 Image from Admin Panel</span>
-          </div>
         </div>
       )}
     </div>
