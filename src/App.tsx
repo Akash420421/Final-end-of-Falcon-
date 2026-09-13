@@ -521,6 +521,7 @@ function MainContent() {
         product={selectedProduct}
         onClose={handleCloseProductModal}
         onOpenWhatsApp={(prod) => handleOpenWhatsApp(prod)}
+        onOpenPhoneModal={handleOpenPhone}
       />
 
       {/* Mobile Side Menu Drawer */}
