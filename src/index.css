@@ -103,6 +103,19 @@ img {
   will-change: background-position;
 }
 
+@keyframes beamSlide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+.animate-beam-slide {
+  animation: beamSlide 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
 /* High-precision physics-based Cubic-Bezier Timing Variables */
 :root {
   --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);

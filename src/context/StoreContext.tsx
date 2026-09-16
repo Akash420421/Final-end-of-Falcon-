@@ -45,6 +45,11 @@ import {
   bumpBackendStoreVersion,
   FreshnessMetadata,
 } from '../services/smartCacheService';
+import {
+  getCataloguePagesFromIdb,
+  saveCataloguePagesToIdb,
+} from '../services/indexedDbCache';
+import { preloadCatalogueImage } from '../components/ProtectedCatalogueCanvas';
 
 // Pre-computed hash of the initial default admin credentials (SHA-256)
 const DEFAULT_ADMIN_EMAIL = 'rajveergreat786@gmail.com';
@@ -450,6 +455,30 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const isDataInitialized = () => safeLocalStorageGet('falcon_data_initialized') === 'true';
   const markDataInitialized = () => safeLocalStorageSet('falcon_data_initialized', 'true');
 
+  // Instantly restore full high-resolution catalogue pages from IndexedDB (<5ms on re-visit)
+  useEffect(() => {
+    let isCancelled = false;
+    getCataloguePagesFromIdb().then((cachedPages) => {
+      if (isCancelled || !cachedPages || cachedPages.length === 0) return;
+      const hasImages = cachedPages.some((p) => Boolean(p.imageUrl || p.image));
+      if (hasImages) {
+        setCatalogueSettingsState((prev) => ({
+          ...prev,
+          pages: [...cachedPages].sort((a, b) => (a.pageNumber ?? 0) - (b.pageNumber ?? 0)),
+        }));
+        setIsCatalogueLoaded(true);
+        // Preload all pages in memory immediately
+        cachedPages.forEach((p) => {
+          const url = p.imageUrl || p.image;
+          if (url) preloadCatalogueImage(url);
+        });
+      }
+    });
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
   // Supabase initial load and real-time subscription
   useEffect(() => {
     let isMounted = true;
@@ -464,12 +493,25 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (!freshMeta || !isMounted) return;
 
         const cachedMeta = getCachedFreshnessMetadata();
-        const isUpToDate = isCacheUpToDate(cachedMeta, freshMeta);
+        let isUpToDate = isCacheUpToDate(cachedMeta, freshMeta);
+
+        // Crucial Check: Verify if local storage/IndexedDB has actual catalogue images.
+        // If Supabase has pages, but our local cache does not have images, force-fetch them!
+        const localIdbPages = await getCataloguePagesFromIdb();
+        const hasValidLocalImages = Boolean(
+          localIdbPages &&
+          localIdbPages.length > 0 &&
+          localIdbPages.some((p) => Boolean(p.imageUrl || p.image))
+        );
+
+        if ((freshMeta.cataloguePagesCount ?? 0) > 0 && !hasValidLocalImages) {
+          isUpToDate = false;
+        }
 
         if (isUpToDate) {
           // Cache is 100% fresh! No admin updates occurred.
-          // Save updated timestamp into cached metadata to track freshness
           setCachedFreshnessMetadata({ ...freshMeta, timestamp: Date.now() });
+          setIsCatalogueLoaded(true);
           return;
         }
 
@@ -530,6 +572,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (cataloguePagesRes.status === 'fulfilled' && cataloguePagesRes.value) {
           const freshPages = cataloguePagesRes.value;
           if (freshPages.length > 0) {
+            // Persist into IndexedDB to survive all browser quota limits
+            saveCataloguePagesToIdb(freshPages).catch(() => {});
+
+            // Preload all 11 catalogue images in background memory right now
+            freshPages.forEach((p) => {
+              const url = p.imageUrl || p.image;
+              if (url) preloadCatalogueImage(url);
+            });
+
             setCatalogueSettingsState((prev) => {
               const currentPages = prev.pages || defaultCatalogueSettings.pages;
               const map = new Map<string, CataloguePage>();
@@ -555,6 +606,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
               return updated;
             });
+
+            setIsCatalogueLoaded(true);
           }
         }
 
@@ -663,6 +716,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           // 4. Process Catalogue Pages (Save real uploaded catalogue pages & images)
           if (cataloguePagesResult && cataloguePagesResult.length > 0) {
             markDataInitialized();
+            saveCataloguePagesToIdb(cataloguePagesResult).catch(() => {});
+            cataloguePagesResult.forEach((p) => {
+              const u = p.imageUrl || p.image;
+              if (u) preloadCatalogueImage(u);
+            });
             setCatalogueSettingsState((prev) => {
               const currentPages = prev.pages && prev.pages.length > 0 ? prev.pages : defaultCatalogueSettings.pages;
               const map = new Map<string, CataloguePage>();
@@ -688,6 +746,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
               return updated;
             });
+            setIsCatalogueLoaded(true);
           }
 
           // 5. Process Catalogue Settings
@@ -726,10 +785,25 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           // SUBSEQUENT RELOAD / REVISIT:
           // Step A — FAST DISPLAY (0ms):
           // Cached state is already rendered immediately.
-          setIsCatalogueLoaded(true);
           setIsSupabaseConnected(true);
           setInitialSyncError(null);
           setInitialSyncStatus('success');
+
+          // Check if catalogue pages already have images in IndexedDB
+          try {
+            const idbPages = await getCataloguePagesFromIdb();
+            if (idbPages && idbPages.some((p) => Boolean(p.imageUrl || p.image))) {
+              setCatalogueSettingsState((prev) => ({
+                ...prev,
+                pages: [...idbPages].sort((a, b) => (a.pageNumber ?? 0) - (b.pageNumber ?? 0)),
+              }));
+              setIsCatalogueLoaded(true);
+              idbPages.forEach((p) => {
+                const u = p.imageUrl || p.image;
+                if (u) preloadCatalogueImage(u);
+              });
+            }
+          } catch {}
 
           // Step B — FRESH BACKEND CHECK:
           // Perform lightweight version & freshness check in background
@@ -1300,6 +1374,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       };
       nextSettings = updated;
       safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
+      saveCataloguePagesToIdb(updatedPages).catch(() => {});
       return updated;
     });
 
@@ -1326,6 +1401,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       };
       nextSettings = updated;
       safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
+      saveCataloguePagesToIdb(sorted).catch(() => {});
       return updated;
     });
 

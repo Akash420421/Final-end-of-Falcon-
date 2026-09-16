@@ -11,6 +11,8 @@ export interface FreshnessMetadata {
   latestProductId: string | null;
   categoriesCount: number;
   latestCategoryUpdatedAt: string | null;
+  cataloguePagesCount: number;
+  latestCatalogueUpdatedAt: string | null;
   storeSettingsUpdatedAt: string | null;
   timestamp: number;
 }
@@ -50,7 +52,7 @@ export function setCachedFreshnessMetadata(meta: FreshnessMetadata): boolean {
  */
 export async function fetchBackendFreshnessMetadata(): Promise<FreshnessMetadata | null> {
   try {
-    const [productsRes, categoriesRes, settingsRes] = await Promise.allSettled([
+    const [productsRes, categoriesRes, settingsRes, catalogueRes] = await Promise.allSettled([
       // 1. Products: exact count + newest updated item
       supabase
         .from('products')
@@ -71,6 +73,13 @@ export async function fetchBackendFreshnessMetadata(): Promise<FreshnessMetadata
         .select('updated_at, company_details')
         .eq('id', 'company_branding')
         .maybeSingle(),
+
+      // 4. Catalogue pages: exact count + newest updated page
+      supabase
+        .from('catalogue_pages')
+        .select('id, updated_at', { count: 'exact' })
+        .order('updated_at', { ascending: false })
+        .limit(1),
     ]);
 
     let productsCount = 0;
@@ -106,6 +115,19 @@ export async function fetchBackendFreshnessMetadata(): Promise<FreshnessMetadata
       }
     }
 
+    let cataloguePagesCount = 0;
+    let latestCatalogueUpdatedAt: string | null = null;
+
+    if (catalogueRes.status === 'fulfilled') {
+      const val = catalogueRes.value as any;
+      if (!val.error) {
+        cataloguePagesCount = typeof val.count === 'number' ? val.count : (val.data?.length || 0);
+        if (Array.isArray(val.data) && val.data.length > 0) {
+          latestCatalogueUpdatedAt = val.data[0].updated_at || null;
+        }
+      }
+    }
+
     let storeSettingsUpdatedAt: string | null = null;
     let productsVersion: string | null = null;
 
@@ -127,6 +149,8 @@ export async function fetchBackendFreshnessMetadata(): Promise<FreshnessMetadata
       latestProductId,
       categoriesCount,
       latestCategoryUpdatedAt,
+      cataloguePagesCount,
+      latestCatalogueUpdatedAt,
       storeSettingsUpdatedAt,
       timestamp: Date.now(),
     };
@@ -178,7 +202,21 @@ export function isCacheUpToDate(
     return false;
   }
 
-  // 7. Store settings updated_at check (branding, banners, hero)
+  // 7. Catalogue pages count check
+  if (typeof fresh.cataloguePagesCount === 'number' && typeof cached.cataloguePagesCount === 'number') {
+    if (cached.cataloguePagesCount !== fresh.cataloguePagesCount) {
+      return false;
+    }
+  }
+
+  // 8. Latest catalogue page updated_at check
+  if (fresh.latestCatalogueUpdatedAt && cached.latestCatalogueUpdatedAt) {
+    if (cached.latestCatalogueUpdatedAt !== fresh.latestCatalogueUpdatedAt) {
+      return false;
+    }
+  }
+
+  // 9. Store settings updated_at check (branding, banners, hero)
   if (fresh.storeSettingsUpdatedAt && cached.storeSettingsUpdatedAt) {
     if (cached.storeSettingsUpdatedAt !== fresh.storeSettingsUpdatedAt) {
       return false;

@@ -14,6 +14,9 @@ export const preloadCatalogueImage = (url: string): void => {
   img.crossOrigin = 'anonymous';
   img.onload = () => {
     globalImageMemoryCache.set(url, img);
+    if ('decode' in img && typeof img.decode === 'function') {
+      img.decode().catch(() => {});
+    }
   };
   img.src = url;
 };
@@ -271,85 +274,98 @@ export const ProtectedCatalogueCanvas: React.FC<ProtectedCatalogueCanvasProps> =
         </div>
       )}
 
-      {/* 3. Render Canvas or Fallback */}
-      {hasCustomImage && !hasError ? (
-        <div
-          className={`w-full relative overflow-hidden flex items-center justify-center ${
-            isBlackout ? 'opacity-0 bg-slate-950' : 'opacity-100 bg-white'
-          }`}
-          style={{ minHeight: imageLoaded ? 'auto' : '320px' }}
-        >
-          {/* Dark Shimmer Placeholder until image is fully loaded & drawn to canvas */}
-          {!imageLoaded && (
-            <div className="w-full aspect-[1/1.4] sm:aspect-[1.4/1] skeleton-shimmer-dark rounded-xl flex flex-col items-center justify-center text-slate-500 gap-3 p-6 text-center">
-              <ShieldCheck className="w-8 h-8 text-slate-600 animate-pulse" />
-              <div className="space-y-1">
-                <p className="text-xs font-bold text-slate-400 tracking-wide">
-                  Loading Protected Page {page.pageNumber || index + 1}...
+      {/* 3. Render Canvas or Futuristic DRM Loading Card */}
+      <div
+        className={`w-full relative overflow-hidden flex items-center justify-center rounded-xl sm:rounded-2xl ${
+          isBlackout ? 'opacity-0 bg-slate-950' : 'opacity-100 bg-slate-950'
+        }`}
+        style={{ minHeight: imageLoaded ? 'auto' : '360px' }}
+      >
+        {/* Sleek Futuristic DRM Loading Card while image is loading, fetching, or decoding */}
+        {!imageLoaded && !hasError && (
+          <div className="w-full aspect-[1/1.4] sm:aspect-[1.4/1] min-h-[360px] sm:min-h-[440px] bg-slate-900/95 flex flex-col items-center justify-center text-center p-6 sm:p-10 relative overflow-hidden select-none border border-slate-800 shadow-2xl">
+            {/* Background Ambient Radial Glow */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-slate-950 via-slate-900 to-slate-950" />
+            <div className="absolute inset-0 skeleton-shimmer-dark opacity-40" />
+
+            {/* Glowing Shield with Pulse Ring */}
+            <div className="relative z-10 mb-4">
+              <div className="absolute -inset-3 rounded-2xl bg-red-600/20 blur-lg animate-pulse" />
+              <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-800/90 border border-red-500/30 flex items-center justify-center shadow-xl shadow-black/50">
+                <ShieldCheck className="w-8 h-8 sm:w-10 sm:h-10 text-red-500 animate-pulse" />
+              </div>
+            </div>
+
+            {/* Page & Security Details */}
+            <div className="relative z-10 space-y-2 max-w-sm px-4">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] sm:text-[11px] font-extrabold tracking-wider uppercase">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                Page {page.pageNumber || index + 1} • High Resolution DRM
+              </div>
+
+              <h3 className="text-base sm:text-lg font-bold text-slate-100 tracking-tight leading-snug">
+                {page.title || `Loading Catalogue Page ${page.pageNumber || index + 1}...`}
+              </h3>
+
+              {page.subtitle ? (
+                <p className="text-xs text-slate-400 line-clamp-1">
+                  {page.subtitle}
                 </p>
-                <p className="text-[10px] text-slate-500">
-                  {page.title || brandName}
+              ) : (
+                <p className="text-xs text-slate-500 line-clamp-1">
+                  {brandName}
+                </p>
+              )}
+
+              {/* Shimmering Animated Progress Bar */}
+              <div className="pt-4 flex flex-col items-center gap-2">
+                <div className="w-48 sm:w-64 h-1.5 rounded-full bg-slate-800 overflow-hidden relative border border-slate-700/50">
+                  <div className="absolute inset-y-0 left-0 w-2/3 bg-gradient-to-r from-red-600 via-amber-400 to-red-600 rounded-full animate-beam-slide" />
+                </div>
+                <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium tracking-wide">
+                  Loading high-resolution specifications...
                 </p>
               </div>
             </div>
-          )}
-
-          <canvas
-            ref={canvasRef}
-            className={`w-full h-auto block select-none pointer-events-none rounded-xl ${
-              imageLoaded ? 'opacity-100' : 'opacity-0 absolute inset-0'
-            }`}
-            onContextMenu={(e) => e.preventDefault()}
-          />
-        </div>
-      ) : isDataLoading ? (
-        /* STATE 1 — LOADING: The backend/database request has not finished yet.
-           Show the existing "Loading Protected Page" animation.
-           NEVER show the upload/empty-state card while data is loading. */
-        <div className="w-full aspect-[1/1.4] sm:aspect-[1.4/1] skeleton-shimmer-dark rounded-xl flex flex-col items-center justify-center text-slate-500 gap-3 p-6 text-center">
-          <ShieldCheck className="w-8 h-8 text-slate-600 animate-pulse" />
-          <div className="space-y-1">
-            <p className="text-xs font-bold text-slate-400 tracking-wide">
-              Loading Protected Page {page.pageNumber || index + 1}...
-            </p>
-            <p className="text-[10px] text-slate-500">
-              {page.title || brandName}
-            </p>
           </div>
-        </div>
-      ) : (
-        /* STATE 3 — LOADED + NO IMAGE:
-           Rendered only after the backend confirms no image has been uploaded for this page.
-           Never shown while the image/data is still loading. */
-        <div className="w-full aspect-[1/1.4] sm:aspect-[1.4/1] min-h-[360px] sm:min-h-[440px] bg-slate-900/95 flex flex-col items-center justify-center text-center p-6 sm:p-10 select-none">
-          <div className="w-14 h-14 rounded-2xl bg-slate-800/90 border border-slate-700/60 flex items-center justify-center text-slate-400 mb-4 shadow-lg shadow-black/20">
-            <ImageOff className="w-7 h-7 text-slate-400 stroke-[1.75]" />
-          </div>
+        )}
 
-          <h3 className="text-base sm:text-lg font-bold text-slate-100 tracking-tight">
-            Image not available
-          </h3>
-
-          <p className="text-xs sm:text-sm text-slate-400 max-w-xs sm:max-w-sm mt-1.5 leading-relaxed">
-            No image has been uploaded for this page yet.
-          </p>
-
-          {(page.title || page.subtitle) && (
-            <div className="mt-4 pt-3.5 border-t border-slate-800/80 w-full max-w-xs text-center">
-              {page.title && (
-                <p className="text-xs font-semibold text-slate-300">
-                  {page.title}
-                </p>
-              )}
-              {page.subtitle && (
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  {page.subtitle}
-                </p>
-              )}
+        {/* In the rare event of an explicit network failure */}
+        {hasError && (
+          <div className="w-full aspect-[1/1.4] sm:aspect-[1.4/1] min-h-[360px] sm:min-h-[440px] bg-slate-900/95 flex flex-col items-center justify-center text-center p-6 sm:p-10 select-none border border-slate-800">
+            <div className="w-14 h-14 rounded-2xl bg-slate-800/90 border border-slate-700/60 flex items-center justify-center text-slate-400 mb-4 shadow-lg shadow-black/20">
+              <ImageOff className="w-7 h-7 text-slate-400 stroke-[1.75]" />
             </div>
-          )}
-        </div>
-      )}
+
+            <h3 className="text-base sm:text-lg font-bold text-slate-100 tracking-tight">
+              Page loading interrupted
+            </h3>
+
+            <p className="text-xs sm:text-sm text-slate-400 max-w-xs sm:max-w-sm mt-1.5 leading-relaxed">
+              Unable to complete image stream for Page {page.pageNumber || index + 1}. Tap to retry.
+            </p>
+
+            <button
+              onClick={() => {
+                setHasError(false);
+                setImageLoaded(false);
+                if (imgUrl) preloadCatalogueImage(imgUrl);
+              }}
+              className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-colors shadow-md active:scale-95"
+            >
+              Retry Loading
+            </button>
+          </div>
+        )}
+
+        <canvas
+          ref={canvasRef}
+          className={`w-full h-auto block select-none pointer-events-none rounded-xl transition-opacity duration-300 ${
+            imageLoaded ? 'opacity-100' : 'opacity-0 absolute inset-0 pointer-events-none'
+          }`}
+          onContextMenu={(e) => e.preventDefault()}
+        />
+      </div>
     </div>
   );
 };
