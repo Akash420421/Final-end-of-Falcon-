@@ -324,34 +324,52 @@ export const CategoryProductsView: React.FC<CategoryProductsViewProps> = ({
               onClick={() => onSelectProduct(product)}
               className="bg-white rounded-2xl lg:rounded-3xl p-3 lg:p-5 border border-slate-200/90 shadow-sm hover:shadow-xl lg:hover:-translate-y-1.5 transition-all duration-200 cursor-pointer flex flex-col justify-between group active:scale-98 relative"
             >
-              {/* Top Badge */}
-              {product.badge && (
-                <div className="absolute top-2 left-2 lg:top-3.5 lg:left-3.5 z-10">
-                  <span className="text-[8px] lg:text-[10px] font-extrabold bg-[#101124] text-white px-2 py-0.5 lg:px-2.5 lg:py-1 rounded-md uppercase tracking-wider">
-                    {product.badge}
-                  </span>
-                </div>
-              )}
-
-              {/* Rating */}
-              {product.rating && (
-                <div className="absolute top-2 right-2 lg:top-3.5 lg:right-3.5 z-10 flex items-center gap-0.5 bg-yellow-50 px-1.5 py-0.5 lg:px-2 lg:py-1 rounded border border-yellow-200">
-                  <Star className="w-2.5 h-2.5 lg:w-3 lg:h-3 text-yellow-500 fill-yellow-500" />
-                  <span className="text-[9px] lg:text-[11px] font-bold text-slate-700">{product.rating}</span>
-                </div>
-              )}
-
-              {/* Product Visual */}
-              <div className="bg-slate-100 rounded-xl lg:rounded-2xl mb-2.5 lg:mb-3 h-36 sm:h-40 lg:h-48 flex items-center justify-center border border-slate-200/80 group-hover:scale-[1.03] transition duration-200 mt-4 overflow-hidden relative">
-                <ProductVisual
-                  type={
-                    product.images && product.images.length > 0
-                      ? product.images[0]
-                      : product.image || 'fan-regulator-5step'
-                  }
-                  size="card"
-                  className="w-full h-full"
+              {/* Product Visual Container (Positioning reference for image, subtle edge accent & badges) */}
+              <div className="relative w-full bg-slate-100 rounded-xl lg:rounded-2xl mb-2.5 lg:mb-3 h-36 sm:h-40 lg:h-48 flex items-center justify-center border border-slate-200/80 group-hover:border-slate-300 transition-colors overflow-hidden">
+                {/* Subtle Decorative Edge Accent — Thin, elegant Falcon brand corner accent */}
+                <div
+                  aria-hidden="true"
+                  className="absolute top-0 left-0 w-8 sm:w-10 lg:w-12 h-[1.5px] bg-gradient-to-r from-[#E0183D] via-[#E0183D]/50 to-transparent pointer-events-none z-10"
                 />
+                <div
+                  aria-hidden="true"
+                  className="absolute top-0 left-0 h-8 sm:h-10 lg:h-12 w-[1.5px] bg-gradient-to-b from-[#E0183D] via-[#E0183D]/50 to-transparent pointer-events-none z-10"
+                />
+
+                {/* Top Left Badge (e.g. Popular, Winter Special) — anchored inside image area */}
+                {product.badge && (
+                  <div className="absolute top-2 left-2 lg:top-2.5 lg:left-2.5 z-10 max-w-[calc(100%-54px)] lg:max-w-[calc(100%-60px)] pointer-events-none">
+                    <span className="inline-block max-w-full truncate text-[8px] lg:text-[10px] font-extrabold bg-[#101124]/90 backdrop-blur-xs text-white px-2 py-0.5 lg:px-2.5 lg:py-1 rounded lg:rounded-md shadow-xs uppercase tracking-wider">
+                      {product.badge}
+                    </span>
+                  </div>
+                )}
+
+                {/* Rating Badge — anchored inside image area with consistent alignment & padding */}
+                {product.rating && Number(product.rating) > 0 && (
+                  <div
+                    className="absolute top-2 right-2 lg:top-2.5 lg:right-2.5 z-10 flex items-center justify-center gap-1 bg-white/95 backdrop-blur-xs px-1.5 py-0.5 lg:px-2 lg:py-0.5 rounded-md border border-amber-200/90 shadow-xs select-none pointer-events-none"
+                    title={`Rating: ${Number(product.rating).toFixed(1)} / 5`}
+                  >
+                    <Star className="w-2.5 h-2.5 lg:w-3 lg:h-3 text-amber-500 fill-amber-400 shrink-0" />
+                    <span className="text-[9px] lg:text-[11px] font-bold text-slate-800 leading-none tabular-nums">
+                      {Number(product.rating).toFixed(1)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Product Visual */}
+                <div className="w-full h-full group-hover:scale-[1.03] transition-transform duration-200 flex items-center justify-center">
+                  <ProductVisual
+                    type={
+                      product.images && product.images.length > 0
+                        ? product.images[0]
+                        : product.image || 'fan-regulator-5step'
+                    }
+                    size="card"
+                    className="w-full h-full"
+                  />
+                </div>
               </div>
 
               {/* Category Tag */}

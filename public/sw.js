@@ -1,5 +1,5 @@
 // Falcon Electrics — Progressive Web App Service Worker
-const CACHE_NAME = 'falcon-pwa-v1';
+const CACHE_NAME = 'falcon-pwa-v2';
 
 const STATIC_PRECACHE = [
   '/',
