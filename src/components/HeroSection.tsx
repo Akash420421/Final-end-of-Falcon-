@@ -117,7 +117,24 @@ const HeroSectionComponent: React.FC<HeroSectionProps> = ({
             {/* Product Cutout Slider with Smooth Cross-Fade Transition */}
             <div className="relative z-10 w-full flex items-center justify-center h-[130px] xs:h-[150px] sm:h-[180px] lg:h-[260px] px-0.5">
               {heroImages.length === 0 ? (
-                <div className="w-full max-w-[120px] xs:max-w-[135px] sm:max-w-[180px] lg:max-w-[260px] aspect-square rounded-2xl skeleton-shimmer-dark shadow-xl" />
+                <div className="w-full max-w-[120px] xs:max-w-[135px] sm:max-w-[180px] lg:max-w-[260px] aspect-square rounded-2xl flex items-center justify-center p-3 sm:p-5 drop-shadow-2xl">
+                  <svg viewBox="0 0 160 120" fill="none" className="w-full h-full filter drop-shadow-[0_8px_16px_rgba(224,24,61,0.35)]">
+                    <path
+                      d="M72 65 C68 45, 55 20, 25 10 C35 30, 42 48, 40 70 C30 55, 18 42, 5 35 C12 55, 22 72, 38 85 C26 78, 15 72, 8 70 C18 85, 32 96, 52 98 C60 88, 68 76, 72 65 Z"
+                      fill="#3B82F6"
+                    />
+                    <path
+                      d="M74 48 C78 40, 84 40, 88 48 C88 56, 82 62, 78 68 C74 65, 72 58, 74 48 Z"
+                      fill="#FFFFFF"
+                      stroke="#1E293B"
+                      strokeWidth="2"
+                    />
+                    <path
+                      d="M88 65 C92 45, 105 20, 135 10 C125 30, 118 48, 120 70 C130 55, 142 42, 155 35 C148 55, 138 72, 122 85 C134 78, 145 72, 152 70 C142 85, 128 96, 108 98 C100 88, 92 76, 88 65 Z"
+                      fill="#E0183D"
+                    />
+                  </svg>
+                </div>
               ) : (
                 heroImages.map((img, idx) => (
                   <div
