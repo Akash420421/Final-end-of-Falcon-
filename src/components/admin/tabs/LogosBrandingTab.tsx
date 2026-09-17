@@ -12,6 +12,8 @@ import {
   ChevronRight,
   Plus,
   Link as LinkIcon,
+  Smartphone,
+  Download,
 } from 'lucide-react';
 import { CompanyDetails, HeroContent } from '../../../types';
 import { ProductVisual } from '../../ProductVisual';
@@ -472,6 +474,52 @@ export const LogosBrandingTab: React.FC<LogosBrandingTabProps> = ({
                   >
                     {editingCompany.hideLogoText ? 'Text: Hidden (Image Only)' : 'Text: Visible (Default)'}
                   </button>
+                </div>
+
+                {/* 3-Line Menu Mobile App Install Button Toggle */}
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div>
+                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <Smartphone className="w-3.5 h-3.5 text-[#E0183D]" />
+                      3-Line Menu Mobile App Install Button
+                    </span>
+                    <span className="text-[10px] text-slate-400 block">
+                      Show or hide the red &quot;Install Falcon App&quot; button inside the mobile drawer menu.
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className={`hidden sm:flex px-2.5 py-1 rounded-lg text-[10px] font-bold text-white items-center gap-1 shadow-sm ${
+                        editingCompany.showInstallAppButton !== false
+                          ? 'bg-[#E0183D]'
+                          : 'bg-slate-800 opacity-40 line-through'
+                      }`}
+                    >
+                      <Download className="w-3 h-3" />
+                      Install Falcon App
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const nextVal = editingCompany.showInstallAppButton === false;
+                        const updated = { ...editingCompany, showInstallAppButton: nextVal };
+                        setEditingCompany(updated);
+                        try {
+                          await onUpdateCompanyDetails(updated);
+                          onShowToast(nextVal ? 'Mobile App Install button shown to users!' : 'Mobile App Install button hidden from users!');
+                        } catch (err: any) {
+                          alert('Error updating install button visibility: ' + (err?.message || err));
+                        }
+                      }}
+                      className={`px-3 py-2 rounded-xl font-bold text-xs transition border min-h-[38px] ${
+                        editingCompany.showInstallAppButton !== false
+                          ? 'bg-emerald-950/80 text-emerald-300 border-emerald-600'
+                          : 'bg-slate-900 text-slate-400 border-slate-700'
+                      }`}
+                    >
+                      {editingCompany.showInstallAppButton !== false ? 'Install Button: Visible' : 'Install Button: Hidden'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

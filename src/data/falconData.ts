@@ -224,6 +224,7 @@ export const companyDetails: CompanyDetails = {
   facebook: 'https://www.facebook.com/Verma.Enterprises.Vikas.Nagar/',
   instagram: 'https://www.instagram.com/vermaenterprisesswitch/',
   headerTheme: 'white',
+  showInstallAppButton: true,
   location: {
     lat: 28.6258,
     lng: 77.0520,

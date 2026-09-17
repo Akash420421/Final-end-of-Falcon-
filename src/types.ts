@@ -125,6 +125,7 @@ export interface CompanyDetails {
   visitingCardImageUrl?: string;
   visitingCardUrl?: string;
   headerTheme?: string;
+  showInstallAppButton?: boolean;
   location: {
     lat: number;
     lng: number;

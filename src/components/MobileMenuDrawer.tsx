@@ -1,9 +1,10 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronRight, Home, Info, Grid, Mail, Award, ShieldCheck, BookOpen } from 'lucide-react';
+import { X, ChevronRight, Home, Info, Grid, Mail, Award, ShieldCheck, BookOpen, Download } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa6';
 import { NavigationTab } from '../types';
 import { useFalconStore } from '../context/StoreContext';
+import { usePWAInstall } from '../utils/usePWAInstall';
 
 interface MobileMenuDrawerProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({
   onOpenAdminPanel,
 }) => {
   const { companyDetails, isAdminLoggedIn } = useFalconStore();
+  const { isInstalled, triggerInstall } = usePWAInstall();
 
   const menuItems: { id: NavigationTab; label: string; href: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'HOME', label: 'Home Page', href: '/', icon: Home },
@@ -148,8 +150,21 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({
               </div>
             </div>
 
-            {/* Bottom Contact Actions */}
+            {/* Bottom Contact & App Actions */}
             <div className="pt-4 border-t border-white/10 space-y-2.5">
+              {companyDetails.showInstallAppButton !== false && !isInstalled && (
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    triggerInstall();
+                  }}
+                  className="w-full bg-[#E0183D] hover:bg-[#c01534] active:bg-[#a0112b] text-white font-bold text-[13px] py-3 rounded-xl flex items-center justify-center gap-2 shadow-md transition-colors active:scale-98"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Install Falcon App</span>
+                </motion.button>
+              )}
+
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 onClick={() => {

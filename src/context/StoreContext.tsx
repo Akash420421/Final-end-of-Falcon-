@@ -261,6 +261,7 @@ const mergeCompanyDetails = (data?: Partial<CompanyDetails> | null): CompanyDeta
     facebook: merged.facebook || defaultCompanyDetails.facebook,
     instagram: merged.instagram || defaultCompanyDetails.instagram,
     headerTheme: merged.headerTheme || defaultCompanyDetails.headerTheme,
+    showInstallAppButton: typeof merged.showInstallAppButton === 'boolean' ? merged.showInstallAppButton : true,
     quote: merged.quote || defaultCompanyDetails.quote,
     visitingCardImageUrl: merged.visitingCardImageUrl || '',
     mapQuery: merged.mapQuery || defaultCompanyDetails.mapQuery || '',

@@ -12,6 +12,8 @@ import {
   CreditCard,
   Quote,
   Sparkles,
+  Smartphone,
+  Download,
 } from 'lucide-react';
 import { CompanyDetails } from '../../../types';
 
@@ -117,6 +119,74 @@ export const CompanyContactTab: React.FC<CompanyContactTabProps> = ({
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* SECTION: Mobile App Install Button (3-Line Menu) */}
+      <div className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <label className="text-xs font-extrabold text-white flex items-center gap-2">
+              <Smartphone className="w-4 h-4 text-[#E0183D]" />
+              3-Line Menu Mobile App Install Button
+            </label>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Show or hide the red &quot;Install Falcon App&quot; button inside the website&apos;s 3-line mobile navigation menu for your customers.
+            </p>
+          </div>
+
+          {/* Toggle Switch */}
+          <button
+            type="button"
+            onClick={async () => {
+              const isCurrentlyShown = editingCompany.showInstallAppButton !== false;
+              const nextVal = !isCurrentlyShown;
+              const updatedCompany = { ...editingCompany, showInstallAppButton: nextVal };
+              setEditingCompany(updatedCompany);
+              try {
+                await onUpdateCompanyDetails(updatedCompany);
+                onShowToast(nextVal ? 'App Install button is now visible to users!' : 'App Install button is now hidden from users!');
+              } catch (err: any) {
+                console.error('Failed to update install button visibility:', err);
+                alert('Failed to update: ' + (err?.message || err));
+              }
+            }}
+            className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              editingCompany.showInstallAppButton !== false ? 'bg-[#E0183D]' : 'bg-slate-700'
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                editingCompany.showInstallAppButton !== false ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[11px] text-slate-300 bg-slate-900/80 px-3.5 py-2.5 rounded-xl border border-slate-800">
+          <div className="flex items-center gap-2">
+            <span className={`w-2.5 h-2.5 rounded-full ${editingCompany.showInstallAppButton !== false ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+            <span>
+              Status:{' '}
+              <strong className={editingCompany.showInstallAppButton !== false ? 'text-emerald-400 font-bold' : 'text-slate-400 font-bold'}>
+                {editingCompany.showInstallAppButton !== false ? 'Shown to Users' : 'Hidden from Users'}
+              </strong>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-slate-400">Button Preview:</span>
+            <div
+              className={`px-3 py-1.5 rounded-xl text-[11px] font-bold text-white flex items-center gap-1.5 shadow-sm transition-opacity ${
+                editingCompany.showInstallAppButton !== false
+                  ? 'bg-[#E0183D] opacity-100'
+                  : 'bg-slate-800 opacity-40 line-through'
+              }`}
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Install Falcon App</span>
+            </div>
+          </div>
         </div>
       </div>
 
