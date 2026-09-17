@@ -426,7 +426,7 @@ function MainContent() {
 
             {/* Browse Categories */}
             <div id="categories-section">
-              {categories.length === 0 && initialSyncStatus === 'loading' ? (
+              {initialSyncStatus === 'loading' || categories.length === 0 ? (
                 <CategoryCarouselSkeleton />
               ) : (
                 <CategoryCarousel
@@ -441,7 +441,7 @@ function MainContent() {
 
             {/* Featured Products Carousel */}
             <div id="featured-products">
-              {products.length === 0 && initialSyncStatus === 'loading' ? (
+              {initialSyncStatus === 'loading' || products.length === 0 ? (
                 <div className="px-4 max-w-md lg:max-w-7xl mx-auto py-6 space-y-4">
                   <div className="space-y-1.5">
                     <div className="w-28 h-3 rounded skeleton-shimmer" />
@@ -492,7 +492,7 @@ function MainContent() {
         )}
 
         {activeTab === 'PRODUCTS' && (
-          products.length === 0 && initialSyncStatus === 'loading' ? (
+          initialSyncStatus === 'loading' || products.length === 0 ? (
             <ProductsPageSkeleton />
           ) : (
             <CategoryProductsView

@@ -281,17 +281,49 @@ const mergeCompanyDetails = (data?: Partial<CompanyDetails> | null): CompanyDeta
   return result;
 };
 
+const isLegacyDemoCategory = (c: any): boolean => {
+  if (!c) return true;
+  const id = String(c.id || '').toLowerCase();
+  const title = String(c.title || '').toLowerCase();
+  return (
+    id === 'summer' ||
+    id === 'winter' ||
+    id === 'rocker' ||
+    (id === 'mixer' && title.includes('mixer grinder switches & spares')) ||
+    title.includes('summer home appliance') ||
+    title.includes('winter heating')
+  );
+};
+
+const isLegacyDemoProduct = (p: any): boolean => {
+  if (!p) return true;
+  const id = String(p.id || '').toLowerCase();
+  return (
+    id === 'fr-5step-16a' ||
+    id === 'rs-16a-rotary' ||
+    id === 'rocker-1way-2way' ||
+    id === 'mixer-rotary-overload' ||
+    id === 'pedestal-fan-switch'
+  );
+};
+
 const hasAnyCachedStoreData = (): boolean => {
   try {
     const storedProds = safeLocalStorageGet('falcon_products');
     const storedCats = safeLocalStorageGet('falcon_categories');
     if (storedProds) {
       const p = JSON.parse(storedProds);
-      if (Array.isArray(p) && p.length > 0) return true;
+      if (Array.isArray(p)) {
+        const real = p.filter((x: any) => !isLegacyDemoProduct(x));
+        if (real.length > 0) return true;
+      }
     }
     if (storedCats) {
       const c = JSON.parse(storedCats);
-      if (Array.isArray(c) && c.length > 0) return true;
+      if (Array.isArray(c)) {
+        const real = c.filter((x: any) => !isLegacyDemoCategory(x));
+        if (real.length > 0) return true;
+      }
     }
     return false;
   } catch {
@@ -302,16 +334,10 @@ const hasAnyCachedStoreData = (): boolean => {
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Fast Initial Render (Step A: 0ms from Cache):
-  // If user has cached products or categories in localStorage, immediately set 'success'
-  // so the website renders instantly without a skeleton block.
-  // Then Step B runs in the background to validate freshness.
+  // Always start with 'loading' on page reload until fresh check is triggered, or 'error' if offline
   const [initialSyncStatus, setInitialSyncStatus] = useState<'loading' | 'success' | 'error'>(() => {
-    if (hasAnyCachedStoreData()) {
-      return 'success';
-    }
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      return 'error';
+      return hasAnyCachedStoreData() ? 'success' : 'error';
     }
     return 'loading';
   });
@@ -376,7 +402,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const saved = safeLocalStorageGet('falcon_products');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const real = parsed.filter((p: any) => !isLegacyDemoProduct(p));
+          return real;
+        }
       }
     } catch {}
     return [];
@@ -388,7 +417,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const saved = safeLocalStorageGet('falcon_categories');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const real = parsed.filter((c: any) => !isLegacyDemoCategory(c));
+          return real;
+        }
       }
     } catch {}
     return [];
