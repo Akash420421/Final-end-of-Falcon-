@@ -1151,13 +1151,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setProductsState((prev) => [newProd, ...prev]);
     safeLocalStorageSet('falcon_products', JSON.stringify([newProd, ...products]));
 
-    try {
-      await upsertSupabaseProduct(newProd);
-      await bumpBackendStoreVersion('product_added');
-      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-    } catch {
-      // Offline fallback
-    }
+    // Background cloud synchronization without blocking UI
+    (async () => {
+      try {
+        await upsertSupabaseProduct(newProd);
+        await bumpBackendStoreVersion('product_added');
+        fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
+      } catch {
+        // Offline fallback
+      }
+    })();
   };
 
   // 6. Update Product
@@ -1183,13 +1186,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const target = nextProducts.find((p) => p.id === id);
     if (target) {
-      try {
-        await upsertSupabaseProduct(target);
-        await bumpBackendStoreVersion('product_updated');
-        fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-      } catch {
-        // Offline fallback
-      }
+      // Background cloud synchronization without blocking UI
+      (async () => {
+        try {
+          await upsertSupabaseProduct(target);
+          await bumpBackendStoreVersion('product_updated');
+          fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
+        } catch {
+          // Offline fallback
+        }
+      })();
     }
   };
 
@@ -1199,13 +1205,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setProductsState(nextProducts);
     safeLocalStorageSet('falcon_products', JSON.stringify(nextProducts));
 
-    try {
-      await deleteSupabaseProduct(id);
-      await bumpBackendStoreVersion('product_deleted');
-      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-    } catch {
-      // Offline fallback
-    }
+    (async () => {
+      try {
+        await deleteSupabaseProduct(id);
+        await bumpBackendStoreVersion('product_deleted');
+        fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
+      } catch {
+        // Offline fallback
+      }
+    })();
   };
 
   // 8. Add Category
@@ -1228,13 +1236,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCategoriesState(nextCategories);
     safeLocalStorageSet('falcon_categories', JSON.stringify(nextCategories));
 
-    try {
-      await upsertSupabaseCategory(newCat);
-      await bumpBackendStoreVersion('category_added');
-      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-    } catch {
-      // Offline fallback
-    }
+    // Background cloud synchronization without blocking UI
+    (async () => {
+      try {
+        await upsertSupabaseCategory(newCat);
+        await bumpBackendStoreVersion('category_added');
+        fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
+      } catch {
+        // Offline fallback
+      }
+    })();
   };
 
   // 9. Update Category
@@ -1251,13 +1262,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const target = nextCategories.find((c) => c.id === id);
     if (target) {
-      try {
-        await upsertSupabaseCategory(target);
-        await bumpBackendStoreVersion('category_updated');
-        fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-      } catch {
-        // Offline fallback
-      }
+      // Background cloud synchronization without blocking UI
+      (async () => {
+        try {
+          await upsertSupabaseCategory(target);
+          await bumpBackendStoreVersion('category_updated');
+          fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
+        } catch {
+          // Offline fallback
+        }
+      })();
     }
   };
 
@@ -1267,13 +1281,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCategoriesState(nextCategories);
     safeLocalStorageSet('falcon_categories', JSON.stringify(nextCategories));
 
-    try {
-      await deleteSupabaseCategory(id);
-      await bumpBackendStoreVersion('category_deleted');
-      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-    } catch {
-      // Offline fallback
-    }
+    (async () => {
+      try {
+        await deleteSupabaseCategory(id);
+        await bumpBackendStoreVersion('category_deleted');
+        fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
+      } catch {
+        // Offline fallback
+      }
+    })();
   };
 
   // 11. Reorder Categories

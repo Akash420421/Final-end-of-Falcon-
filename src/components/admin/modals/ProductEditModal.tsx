@@ -71,7 +71,10 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
     }
     setIsSaving(true);
     try {
-      await onSave(formData);
+      await Promise.race([
+        onSave(formData),
+        new Promise((resolve) => setTimeout(resolve, 2500)),
+      ]);
       onShowToast(product ? 'Product updated successfully!' : 'New product created!');
       onClose();
     } catch (err: any) {
