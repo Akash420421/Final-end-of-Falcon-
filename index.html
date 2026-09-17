@@ -70,27 +70,39 @@
     <link rel="shortcut icon" type="image/png" href="/pwa-192x192.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
-    <!-- PWA Service Worker Registration -->
+    <!-- PWA Service Worker Registration & Live Auto-Update -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {
           navigator.serviceWorker.register('/sw.js', { scope: '/' })
             .then(function(reg) {
               console.log('[Falcon PWA] Service Worker active with scope:', reg.scope);
+              // Check for fresh version immediately on load
+              try { reg.update(); } catch(e) {}
+              
+              // Automatically check for fresh version whenever user opens or switches back to the app
+              document.addEventListener('visibilitychange', function() {
+                if (document.visibilityState === 'visible') {
+                  try { reg.update(); } catch(e) {}
+                }
+              });
+              window.addEventListener('focus', function() {
+                try { reg.update(); } catch(e) {}
+              });
             })
             .catch(function(err) {
-              console.warn('[Falcon PWA] Service Worker registration failed:', err);
+              console.warn('[Falcon PWA] Service Worker registration note:', err);
             });
         });
       }
     </script>
 
-    <!-- Performance Preconnects -->
+    <!-- Performance Preconnects & High-Fidelity Web Fonts (Full Weight Spectrum: 300-900) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://ywgosjrealgcbanelfei.supabase.co" crossorigin>
     <link rel="preconnect" href="https://maps.google.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Montserrat:wght@700;800;900&family=Plus+Jakarta+Sans:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,600;1,700;1,800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 
     <!-- Structured Data 1: LocalBusiness & Manufacturing Plant (Schema.org JSON-LD) -->

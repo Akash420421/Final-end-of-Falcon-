@@ -920,17 +920,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setIsSupabaseConnected(false);
     };
 
-    // Mobile & Desktop page focus / revisit triggers
+    // Mobile & Desktop page focus / revisit triggers: forces fresh check when user opens or returns to app
     const handlePageShow = () => {
-      syncFreshnessInBackground();
+      syncFreshnessInBackground(true);
     };
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        syncFreshnessInBackground();
+        syncFreshnessInBackground(true);
       }
     };
     const handleFocus = () => {
-      syncFreshnessInBackground();
+      syncFreshnessInBackground(true);
     };
 
     window.addEventListener('online', handleOnline);
@@ -942,7 +942,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Periodic heartbeat check every 30 seconds if window is visible
     const periodicCheck = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        syncFreshnessInBackground();
+        syncFreshnessInBackground(true);
       }
     }, 30000);
 

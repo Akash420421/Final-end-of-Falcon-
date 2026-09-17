@@ -126,6 +126,8 @@ const HeaderComponent: React.FC<HeaderProps> = ({
 
   const currentTagline = companyDetails.logoTagline || companyDetails.tagline || 'Switch to excellence';
   const shouldHideText = companyDetails.hideLogoText === true;
+  const [isLogoLoaded, setIsLogoLoaded] = useState(false);
+  const [isBannerLoaded, setIsBannerLoaded] = useState(false);
 
   return (
     <header className={`${themeStyles.header} h-[68px] lg:h-[84px] px-4 lg:px-8 w-full`}>
@@ -149,22 +151,30 @@ const HeaderComponent: React.FC<HeaderProps> = ({
           >
             {/* Case 1: Custom Full Combined Header Brand Banner (Image containing custom logo + stylized colored name) */}
             {companyDetails.customHeaderBannerUrl ? (
-              <div className="h-10 sm:h-12 lg:h-16 flex items-center shrink-0 max-w-[210px] xs:max-w-[250px] sm:max-w-[320px] lg:max-w-[420px] overflow-hidden">
+              <div className="relative h-10 sm:h-12 lg:h-16 flex items-center shrink-0 max-w-[210px] xs:max-w-[250px] sm:max-w-[320px] lg:max-w-[420px] overflow-hidden">
+                {!isBannerLoaded && (
+                  <div className="w-32 sm:w-48 lg:w-56 h-8 sm:h-10 lg:h-12 rounded-lg skeleton-shimmer shrink-0" />
+                )}
                 <img
                   src={companyDetails.customHeaderBannerUrl}
                   alt={companyDetails.brandName || 'Falcon Electrics'}
-                  className="h-full w-auto max-w-full object-contain object-left transition-transform group-hover:scale-105"
+                  onLoad={() => setIsBannerLoaded(true)}
+                  className={`h-full w-auto max-w-full object-contain object-left transition-transform group-hover:scale-105 ${!isBannerLoaded ? 'hidden' : 'block'}`}
                 />
               </div>
             ) : (
               /* Case 2: Standard Separate Logo Icon + Text Layout */
               <>
                 {logoImageUrl ? (
-                  <div className="w-9 h-9 lg:w-16 lg:h-14 rounded-xl flex items-center justify-center shrink-0 overflow-hidden">
+                  <div className="relative w-9 h-9 lg:w-16 lg:h-14 rounded-xl flex items-center justify-center shrink-0 overflow-hidden">
+                    {!isLogoLoaded && (
+                      <div className="absolute inset-0 rounded-xl skeleton-shimmer" />
+                    )}
                     <img
                       src={logoImageUrl}
                       alt={companyDetails.brandName}
-                      className="max-w-full max-h-full object-contain transition-transform group-hover:scale-105"
+                      onLoad={() => setIsLogoLoaded(true)}
+                      className={`max-w-full max-h-full object-contain transition-transform group-hover:scale-105 ${!isLogoLoaded ? 'opacity-0' : 'opacity-100 transition-opacity duration-200'}`}
                     />
                   </div>
                 ) : (

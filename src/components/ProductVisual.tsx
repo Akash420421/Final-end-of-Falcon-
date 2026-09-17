@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 interface ProductVisualProps {
   type: string;
@@ -13,6 +13,9 @@ export const ProductVisual: React.FC<ProductVisualProps> = ({
   className = '',
   objectFit,
 }) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
   // Default fit: 'contain' for hero showcases, logos & small icons, 'cover' for product cards
   const effectiveFit = objectFit || (size === 'hero' || size === 'sm' ? 'contain' : 'cover');
 
@@ -44,16 +47,27 @@ export const ProductVisual: React.FC<ProductVisualProps> = ({
       type.endsWith('.webp') ||
       type.endsWith('.svg'));
 
-  if (isCustomImage) {
+  if (isCustomImage && !hasError) {
     const fitClass = effectiveFit === 'contain' ? 'object-contain' : effectiveFit === 'fill' ? 'object-fill' : 'object-cover';
     return (
       <div className={`relative flex items-center justify-center ${containerSize} ${className} bg-transparent`}>
+        {!isLoaded && (
+          <div
+            className={`absolute inset-0 rounded-xl ${
+              size === 'hero' ? 'skeleton-shimmer-dark' : 'skeleton-shimmer'
+            }`}
+          />
+        )}
         <img
           src={type}
           alt="Product or Category visual"
           loading={size === 'hero' ? 'eager' : 'lazy'}
           referrerPolicy="no-referrer"
-          className={`w-full h-full ${fitClass} select-none`}
+          onLoad={() => setIsLoaded(true)}
+          onError={() => setHasError(true)}
+          className={`w-full h-full ${fitClass} select-none ${
+            !isLoaded ? 'opacity-0' : 'opacity-100 transition-opacity duration-200'
+          }`}
         />
       </div>
     );
