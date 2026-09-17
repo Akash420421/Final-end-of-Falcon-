@@ -3,8 +3,11 @@ import { safeLocalStorageGet, safeLocalStorageSet } from '../utils/safeStorage';
 
 export const CACHE_META_KEY = 'falcon_cache_metadata';
 export const CACHE_INITIALIZED_KEY = 'falcon_data_initialized';
+export const STORE_VERSION_KEY = 'falcon_store_version';
+export const STORE_VERSION_ROW_ID = 'store_version';
 
 export interface FreshnessMetadata {
+  serverVersion?: number | null;
   productsVersion: string | null;
   productsCount: number;
   latestProductUpdatedAt: string | null;
@@ -15,6 +18,90 @@ export interface FreshnessMetadata {
   latestCatalogueUpdatedAt: string | null;
   storeSettingsUpdatedAt: string | null;
   timestamp: number;
+}
+
+/**
+ * Retrieves the locally stored integer store version (e.g. 12, 13)
+ */
+export function getLocalStoreVersion(): number | null {
+  try {
+    const raw = safeLocalStorageGet(STORE_VERSION_KEY);
+    if (!raw) return null;
+    const num = parseInt(raw, 10);
+    return isNaN(num) ? null : num;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Persists the integer store version to localStorage (e.g. 13)
+ */
+export function setLocalStoreVersion(version: number): boolean {
+  try {
+    if (typeof version !== 'number' || isNaN(version)) return false;
+    return safeLocalStorageSet(STORE_VERSION_KEY, String(version));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fast-path: Fetches the lightweight integer store version row from Supabase (<60 bytes)
+ */
+export async function fetchServerStoreVersion(): Promise<{
+  version: number;
+  updatedAt: string;
+  reason?: string;
+} | null> {
+  try {
+    const { data, error } = await supabase
+      .from('store_settings')
+      .select('company_details, updated_at')
+      .eq('id', STORE_VERSION_ROW_ID)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    const details = data.company_details || {};
+    const versionNum =
+      typeof details.version === 'number'
+        ? details.version
+        : parseInt(details.version, 10);
+
+    if (isNaN(versionNum) || versionNum < 0) return null;
+
+    return {
+      version: versionNum,
+      updatedAt: data.updated_at || details.updatedAt || new Date().toISOString(),
+      reason: details.reason || 'update',
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Option C Hard Purge: Clears all stale cached store data from localStorage
+ * Does NOT touch admin credentials, session, or customer quote requests.
+ */
+export function hardPurgeLocalStoreCache(): void {
+  const keysToPurge = [
+    'falcon_products',
+    'falcon_categories',
+    'falcon_company_details',
+    'falcon_hero_content',
+    'falcon_logo_image',
+    'falcon_why_choose_us',
+    'falcon_catalogue_settings',
+    CACHE_META_KEY,
+    CACHE_INITIALIZED_KEY,
+  ];
+
+  for (const key of keysToPurge) {
+    try {
+      localStorage.removeItem(key);
+    } catch {}
+  }
 }
 
 /**
@@ -67,10 +154,10 @@ export async function fetchBackendFreshnessMetadata(): Promise<FreshnessMetadata
         .order('updated_at', { ascending: false })
         .limit(1),
 
-      // 3. Store settings: updated_at + version marker
+      // 3. Store settings: updated_at + version marker (<200 bytes instead of 810KB)
       supabase
         .from('store_settings')
-        .select('updated_at, company_details')
+        .select('updated_at, company_details->"_syncMeta"')
         .eq('id', 'company_branding')
         .maybeSingle(),
 
@@ -80,6 +167,13 @@ export async function fetchBackendFreshnessMetadata(): Promise<FreshnessMetadata
         .select('id, updated_at', { count: 'exact' })
         .order('updated_at', { ascending: false })
         .limit(1),
+
+      // 5. Option C Dedicated Store Version Row (<60 bytes)
+      supabase
+        .from('store_settings')
+        .select('company_details, updated_at')
+        .eq('id', STORE_VERSION_ROW_ID)
+        .maybeSingle(),
     ]);
 
     let productsCount = 0;
@@ -135,14 +229,23 @@ export async function fetchBackendFreshnessMetadata(): Promise<FreshnessMetadata
       const val = settingsRes.value as any;
       if (!val.error && val.data) {
         storeSettingsUpdatedAt = val.data.updated_at || null;
-        const details = val.data.company_details || val.data.companyDetails;
-        if (details && details._syncMeta?.productsVersion) {
-          productsVersion = String(details._syncMeta.productsVersion);
+        const syncMeta = val.data._syncMeta || val.data.company_details?._syncMeta || val.data.companyDetails?._syncMeta;
+        if (syncMeta?.productsVersion) {
+          productsVersion = String(syncMeta.productsVersion);
         }
       }
     }
 
+    let serverVersion: number | null = null;
+    try {
+      const serverVer = await fetchServerStoreVersion();
+      if (serverVer && typeof serverVer.version === 'number') {
+        serverVersion = serverVer.version;
+      }
+    } catch {}
+
     return {
+      serverVersion,
       productsVersion,
       productsCount,
       latestProductUpdatedAt,
@@ -169,6 +272,14 @@ export function isCacheUpToDate(
   fresh: FreshnessMetadata
 ): boolean {
   if (!cached) return false;
+
+  // 0. Option C: Direct Integer Store Version check (e.g. 12 vs 13)
+  const localVer = getLocalStoreVersion();
+  if (typeof fresh.serverVersion === 'number' && fresh.serverVersion > 0) {
+    if (localVer === null || localVer !== fresh.serverVersion) {
+      return false;
+    }
+  }
 
   // 1. Explicit productsVersion tag (if set by Admin panel)
   if (fresh.productsVersion && cached.productsVersion) {
@@ -227,49 +338,77 @@ export function isCacheUpToDate(
 }
 
 /**
- * Updates the backend store data version and update timestamp in Supabase
+ * Option C: Increments integer version counter in Supabase (e.g. 12 -> 13)
  * Call this after any Admin operation: add, update, delete product/category/settings.
  */
 export async function bumpBackendStoreVersion(
   reason: string = 'admin_action'
-): Promise<string> {
-  const newVersion = `v_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+): Promise<number> {
   const nowIso = new Date().toISOString();
-
   try {
-    // 1. Fetch existing company_details to preserve all fields
+    // 1. Fetch current integer version
     const { data } = await supabase
       .from('store_settings')
       .select('company_details')
-      .eq('id', 'company_branding')
+      .eq('id', STORE_VERSION_ROW_ID)
       .maybeSingle();
 
     const existingDetails = data?.company_details || {};
-    const updatedDetails = {
-      ...existingDetails,
-      _syncMeta: {
-        productsVersion: newVersion,
-        updatedAt: nowIso,
-        reason,
-      },
-    };
+    const currentVersion = Number(existingDetails.version) || 0;
+    const nextVersion = currentVersion + 1;
 
-    // 2. Update store_settings with the new version and timestamp
+    // 2. Save bumped version to store_version row
     await supabase
       .from('store_settings')
       .upsert(
         {
-          id: 'company_branding',
-          company_details: updatedDetails,
+          id: STORE_VERSION_ROW_ID,
+          company_details: {
+            version: nextVersion,
+            updatedAt: nowIso,
+            reason,
+          },
           updated_at: nowIso,
         },
         { onConflict: 'id' }
       );
-  } catch {
-    // Offline fallback: non-blocking
-  }
 
-  return newVersion;
+    // 3. Keep local storage on admin device in sync immediately
+    setLocalStoreVersion(nextVersion);
+
+    // 4. Dual-sync into company_branding for backward compatibility
+    try {
+      const { data: brandData } = await supabase
+        .from('store_settings')
+        .select('company_details')
+        .eq('id', 'company_branding')
+        .maybeSingle();
+
+      const bDetails = brandData?.company_details || {};
+      await supabase
+        .from('store_settings')
+        .upsert(
+          {
+            id: 'company_branding',
+            company_details: {
+              ...bDetails,
+              _syncMeta: {
+                productsVersion: String(nextVersion),
+                updatedAt: nowIso,
+                reason,
+              },
+            },
+            updated_at: nowIso,
+          },
+          { onConflict: 'id' }
+        );
+    } catch {}
+
+    return nextVersion;
+  } catch (err) {
+    console.warn('[bumpBackendStoreVersion] network error:', err);
+    return 0;
+  }
 }
 
 /**

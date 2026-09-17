@@ -43,6 +43,10 @@ import {
   fetchBackendFreshnessMetadata,
   isCacheUpToDate,
   bumpBackendStoreVersion,
+  getLocalStoreVersion,
+  setLocalStoreVersion,
+  fetchServerStoreVersion,
+  hardPurgeLocalStoreCache,
   FreshnessMetadata,
 } from '../services/smartCacheService';
 import {
@@ -483,40 +487,69 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     let isMounted = true;
 
-    // Background freshness check & sync:
-    // Compares lightweight metadata (<400 bytes) with locally cached version.
-    // If cache matches: skips downloading entire dataset.
-    // If cache differs (admin added/edited/deleted products or images): fetches fresh data silently.
-    const syncFreshnessInBackground = async () => {
+    // Background freshness check & sync (Option C: Smart Version Bump with Hard Purge):
+    // Checks server version (<60 bytes).
+    // If local version matches server version: skips downloading anything (0 wasted bytes).
+    // If server version is higher (or force=true): hard purges local cache and replaces with fresh data.
+    const syncFreshnessInBackground = async (force: boolean = false) => {
       try {
-        const freshMeta = await fetchBackendFreshnessMetadata();
-        if (!freshMeta || !isMounted) return;
+        const [serverVerRes, freshMetaRes] = await Promise.allSettled([
+          fetchServerStoreVersion(),
+          fetchBackendFreshnessMetadata(),
+        ]);
 
-        const cachedMeta = getCachedFreshnessMetadata();
-        let isUpToDate = isCacheUpToDate(cachedMeta, freshMeta);
+        const serverVer = serverVerRes.status === 'fulfilled' ? serverVerRes.value : null;
+        const freshMeta = freshMetaRes.status === 'fulfilled' ? freshMetaRes.value : null;
 
-        // Crucial Check: Verify if local storage/IndexedDB has actual catalogue images.
-        // If Supabase has pages, but our local cache does not have images, force-fetch them!
-        const localIdbPages = await getCataloguePagesFromIdb();
-        const hasValidLocalImages = Boolean(
-          localIdbPages &&
-          localIdbPages.length > 0 &&
-          localIdbPages.some((p) => Boolean(p.imageUrl || p.image))
-        );
-
-        if ((freshMeta.cataloguePagesCount ?? 0) > 0 && !hasValidLocalImages) {
-          isUpToDate = false;
+        if (!serverVer && !freshMeta) {
+          // Network might be offline, do nothing to preserve local experience
+          return;
         }
 
-        if (isUpToDate) {
-          // Cache is 100% fresh! No admin updates occurred.
-          setCachedFreshnessMetadata({ ...freshMeta, timestamp: Date.now() });
+        const localVer = getLocalStoreVersion();
+        const cachedMeta = getCachedFreshnessMetadata();
+
+        let isOutdated = force;
+
+        // Check A: Dedicated integer version check (Option C)
+        if (serverVer && typeof serverVer.version === 'number') {
+          if (localVer === null || localVer !== serverVer.version) {
+            isOutdated = true;
+          }
+        }
+
+        // Check B: Metadata validation (products count, timestamps)
+        if (!isOutdated && freshMeta) {
+          if (!isCacheUpToDate(cachedMeta, freshMeta)) {
+            isOutdated = true;
+          }
+        }
+
+        // Check C: Ensure catalogue pages have images
+        if (!isOutdated && freshMeta && (freshMeta.cataloguePagesCount ?? 0) > 0) {
+          const localIdbPages = await getCataloguePagesFromIdb();
+          const hasValidLocalImages = Boolean(
+            localIdbPages &&
+            localIdbPages.length > 0 &&
+            localIdbPages.some((p) => Boolean(p.imageUrl || p.image))
+          );
+          if (!hasValidLocalImages) {
+            isOutdated = true;
+          }
+        }
+
+        if (!isOutdated) {
+          // Cache is 100% up to date!
+          if (serverVer?.version) setLocalStoreVersion(serverVer.version);
+          if (freshMeta) setCachedFreshnessMetadata({ ...freshMeta, timestamp: Date.now() });
           setIsCatalogueLoaded(true);
           return;
         }
 
-        // Backend data changed! (Admin added, edited, deleted product, changed image, or updated settings)
-        // Fetch fresh products, categories, settings, and catalogue silently in background
+        // Option C Hard Purge: Clear stale cached products and settings
+        hardPurgeLocalStoreCache();
+
+        // Fetch fresh products, categories, settings, and catalogue in parallel
         const [productsRes, categoriesRes, settingsRes, cataloguePagesRes] = await Promise.allSettled([
           fetchSupabaseProducts(),
           fetchSupabaseCategories(),
@@ -527,14 +560,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (!isMounted) return;
 
         // 1. Update Products if fetched
-        if (productsRes.status === 'fulfilled' && productsRes.value) {
+        if (productsRes.status === 'fulfilled' && Array.isArray(productsRes.value)) {
           const freshProducts = productsRes.value;
           setProductsState(freshProducts);
           safeLocalStorageSet('falcon_products', JSON.stringify(freshProducts));
         }
 
         // 2. Update Categories if fetched
-        if (categoriesRes.status === 'fulfilled' && categoriesRes.value) {
+        if (categoriesRes.status === 'fulfilled' && Array.isArray(categoriesRes.value)) {
           const freshCats = [...categoriesRes.value].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
           setCategoriesState(freshCats);
           safeLocalStorageSet('falcon_categories', JSON.stringify(freshCats));
@@ -569,13 +602,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
 
         // 4. Update Catalogue Pages if fetched
-        if (cataloguePagesRes.status === 'fulfilled' && cataloguePagesRes.value) {
+        if (cataloguePagesRes.status === 'fulfilled' && Array.isArray(cataloguePagesRes.value)) {
           const freshPages = cataloguePagesRes.value;
           if (freshPages.length > 0) {
-            // Persist into IndexedDB to survive all browser quota limits
             saveCataloguePagesToIdb(freshPages).catch(() => {});
 
-            // Preload all 11 catalogue images in background memory right now
             freshPages.forEach((p) => {
               const url = p.imageUrl || p.image;
               if (url) preloadCatalogueImage(url);
@@ -611,10 +642,19 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
         }
 
-        // Update local freshness metadata to latest backend version
-        setCachedFreshnessMetadata(freshMeta);
-      } catch {
-        // Silent background fallback: never breaks the UI
+        // 5. Update local store version to match server version
+        if (serverVer && typeof serverVer.version === 'number') {
+          setLocalStoreVersion(serverVer.version);
+        } else if (freshMeta?.serverVersion) {
+          setLocalStoreVersion(freshMeta.serverVersion);
+        }
+
+        if (freshMeta) {
+          setCachedFreshnessMetadata(freshMeta);
+        }
+        markDataInitialized();
+      } catch (err) {
+        console.warn('[syncFreshnessInBackground error]:', err);
       }
     };
 
@@ -764,10 +804,18 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
           setIsCatalogueLoaded(true);
 
-          // Save freshness metadata
+          // Save freshness metadata & Option C integer store version
           if (freshMeta) {
             setCachedFreshnessMetadata(freshMeta);
+            if (typeof freshMeta.serverVersion === 'number') {
+              setLocalStoreVersion(freshMeta.serverVersion);
+            }
           }
+          fetchServerStoreVersion().then((sv) => {
+            if (sv && typeof sv.version === 'number') {
+              setLocalStoreVersion(sv.version);
+            }
+          });
 
           // ONLY trigger offline error screen if device is genuinely OFFLINE with NO cached data!
           const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
@@ -834,14 +882,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setIsSupabaseConnected(true);
       setInitialSyncError(null);
       setInitialSyncStatus('success');
-      syncFreshnessInBackground();
+      syncFreshnessInBackground(true);
       setRetryTrigger((prev) => prev + 1);
     };
     const handleOffline = () => {
       setIsSupabaseConnected(false);
     };
 
-    // Chrome Back/Forward Cache (bfcache) & Visibility checks
+    // Mobile & Desktop page focus / revisit triggers
     const handlePageShow = () => {
       syncFreshnessInBackground();
     };
@@ -850,15 +898,71 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         syncFreshnessInBackground();
       }
     };
+    const handleFocus = () => {
+      syncFreshnessInBackground();
+    };
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     window.addEventListener('pageshow', handlePageShow);
+    window.addEventListener('focus', handleFocus);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Periodic heartbeat check every 30 seconds if window is visible
+    const periodicCheck = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        syncFreshnessInBackground();
+      }
+    }, 30000);
 
     // Setup Supabase Real-Time Channel Listener
     const channel = supabase
       .channel('falcon_realtime_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'store_settings' },
+        (payload) => {
+          const rowId = (payload.new as any)?.id || (payload.old as any)?.id;
+          if (rowId === 'store_version') {
+            syncFreshnessInBackground(true);
+            return;
+          }
+          if (payload.new && (payload.new as any).id === 'company_branding') {
+            const data: any = payload.new;
+            const newDetails = data.company_details || data.companyDetails;
+            const newHero = data.hero_content || data.heroContent;
+            const newLogo = data.logo_image_url || data.logoImageUrl;
+            const newWhy = data.why_choose_us || data.whyChooseUs;
+            const newCat = data.catalogue_settings || data.catalogueSettings;
+
+            if (newDetails) {
+              const merged = mergeCompanyDetails(newDetails);
+              setCompanyDetailsState(merged);
+              safeLocalStorageSet('falcon_company_details', JSON.stringify(merged));
+            }
+            if (newHero) {
+              setHeroContentState(newHero);
+              safeLocalStorageSet('falcon_hero_content', JSON.stringify(newHero));
+            }
+            if (newLogo !== undefined) {
+              setLogoImageUrlState(newLogo);
+              safeLocalStorageSet('falcon_logo_image', newLogo);
+            }
+            if (newWhy) {
+              setWhyChooseUsState(newWhy);
+              safeLocalStorageSet('falcon_why_choose_us', JSON.stringify(newWhy));
+            }
+            if (newCat) {
+              setCatalogueSettingsState((prev) => {
+                const merged = { ...prev, ...newCat };
+                safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(merged));
+                return merged;
+              });
+            }
+            fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
+          }
+        }
+      )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'products' },
@@ -1002,7 +1106,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('pageshow', handlePageShow);
+      window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(periodicCheck);
       supabase.removeChannel(channel);
     };
   }, [retryTrigger]);
@@ -1075,7 +1181,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await saveSupabaseStoreSettings({ companyDetails: updated });
-      await bumpBackendStoreVersion('company_details_updated');
+      const newVer = await bumpBackendStoreVersion('company_details_updated');
+      if (newVer) setLocalStoreVersion(newVer);
       fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
     } catch {
       // Offline fallback
@@ -1099,7 +1206,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await saveSupabaseStoreSettings({ heroContent: updated });
-      await bumpBackendStoreVersion('hero_content_updated');
+      const newVer = await bumpBackendStoreVersion('hero_content_updated');
+      if (newVer) setLocalStoreVersion(newVer);
       fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
     } catch {
       // Offline fallback
@@ -1117,7 +1225,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await saveSupabaseStoreSettings({ logoImageUrl: finalUrl });
-      await bumpBackendStoreVersion('logo_updated');
+      const newVer = await bumpBackendStoreVersion('logo_updated');
+      if (newVer) setLocalStoreVersion(newVer);
       fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
     } catch {
       // Offline fallback
@@ -1151,16 +1260,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setProductsState((prev) => [newProd, ...prev]);
     safeLocalStorageSet('falcon_products', JSON.stringify([newProd, ...products]));
 
-    // Background cloud synchronization without blocking UI
-    (async () => {
-      try {
-        await upsertSupabaseProduct(newProd);
-        await bumpBackendStoreVersion('product_added');
-        fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-      } catch {
-        // Offline fallback
-      }
-    })();
+    // Cloud synchronization & version bump
+    try {
+      await upsertSupabaseProduct(newProd);
+      const newVer = await bumpBackendStoreVersion('product_added');
+      if (newVer) setLocalStoreVersion(newVer);
+      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
+    } catch (err) {
+      console.warn('[addProduct cloud sync warning]:', err);
+    }
   };
 
   // 6. Update Product
@@ -1186,16 +1294,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const target = nextProducts.find((p) => p.id === id);
     if (target) {
-      // Background cloud synchronization without blocking UI
-      (async () => {
-        try {
-          await upsertSupabaseProduct(target);
-          await bumpBackendStoreVersion('product_updated');
-          fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-        } catch {
-          // Offline fallback
-        }
-      })();
+      try {
+        await upsertSupabaseProduct(target);
+        const newVer = await bumpBackendStoreVersion('product_updated');
+        if (newVer) setLocalStoreVersion(newVer);
+        fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
+      } catch (err) {
+        console.warn('[updateProduct cloud sync warning]:', err);
+      }
     }
   };
 
@@ -1205,15 +1311,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setProductsState(nextProducts);
     safeLocalStorageSet('falcon_products', JSON.stringify(nextProducts));
 
-    (async () => {
-      try {
-        await deleteSupabaseProduct(id);
-        await bumpBackendStoreVersion('product_deleted');
-        fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-      } catch {
-        // Offline fallback
-      }
-    })();
+    try {
+      await deleteSupabaseProduct(id);
+      const newVer = await bumpBackendStoreVersion('product_deleted');
+      if (newVer) setLocalStoreVersion(newVer);
+      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
+    } catch (err) {
+      console.warn('[deleteProduct cloud sync warning]:', err);
+    }
   };
 
   // 8. Add Category
@@ -1236,16 +1341,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCategoriesState(nextCategories);
     safeLocalStorageSet('falcon_categories', JSON.stringify(nextCategories));
 
-    // Background cloud synchronization without blocking UI
-    (async () => {
-      try {
-        await upsertSupabaseCategory(newCat);
-        await bumpBackendStoreVersion('category_added');
-        fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-      } catch {
-        // Offline fallback
-      }
-    })();
+    try {
+      await upsertSupabaseCategory(newCat);
+      const newVer = await bumpBackendStoreVersion('category_added');
+      if (newVer) setLocalStoreVersion(newVer);
+      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
+    } catch (err) {
+      console.warn('[addCategory cloud sync warning]:', err);
+    }
   };
 
   // 9. Update Category
@@ -1262,16 +1365,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const target = nextCategories.find((c) => c.id === id);
     if (target) {
-      // Background cloud synchronization without blocking UI
-      (async () => {
-        try {
-          await upsertSupabaseCategory(target);
-          await bumpBackendStoreVersion('category_updated');
-          fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-        } catch {
-          // Offline fallback
-        }
-      })();
+      try {
+        await upsertSupabaseCategory(target);
+        const newVer = await bumpBackendStoreVersion('category_updated');
+        if (newVer) setLocalStoreVersion(newVer);
+        fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
+      } catch (err) {
+        console.warn('[updateCategory cloud sync warning]:', err);
+      }
     }
   };
 
@@ -1281,15 +1382,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCategoriesState(nextCategories);
     safeLocalStorageSet('falcon_categories', JSON.stringify(nextCategories));
 
-    (async () => {
-      try {
-        await deleteSupabaseCategory(id);
-        await bumpBackendStoreVersion('category_deleted');
-        fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-      } catch {
-        // Offline fallback
-      }
-    })();
+    try {
+      await deleteSupabaseCategory(id);
+      const newVer = await bumpBackendStoreVersion('category_deleted');
+      if (newVer) setLocalStoreVersion(newVer);
+      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
+    } catch (err) {
+      console.warn('[deleteCategory cloud sync warning]:', err);
+    }
   };
 
   // 11. Reorder Categories
@@ -1302,7 +1402,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       for (const cat of updatedWithOrder) {
         await upsertSupabaseCategory(cat);
       }
-      await bumpBackendStoreVersion('categories_reordered');
+      const newVer = await bumpBackendStoreVersion('categories_reordered');
+      if (newVer) setLocalStoreVersion(newVer);
       fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
     } catch {
       // Offline fallback
@@ -1344,7 +1445,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await saveSupabaseStoreSettings({ whyChooseUs: items });
-      await bumpBackendStoreVersion('why_choose_us_updated');
+      const newVer = await bumpBackendStoreVersion('why_choose_us_updated');
+      if (newVer) setLocalStoreVersion(newVer);
       fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
     } catch {
       // Offline fallback
@@ -1362,7 +1464,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await saveSupabaseStoreSettings({ catalogueSettings: updated });
-      await bumpBackendStoreVersion('catalogue_settings_updated');
+      const newVer = await bumpBackendStoreVersion('catalogue_settings_updated');
+      if (newVer) setLocalStoreVersion(newVer);
       fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
     } catch {
       // Offline fallback
@@ -1399,7 +1502,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         await saveSupabaseStoreSettings({ catalogueSettings: nextSettings });
       }
       await upsertSupabaseCataloguePage(page);
-      await bumpBackendStoreVersion('catalogue_page_updated');
+      const newVer = await bumpBackendStoreVersion('catalogue_page_updated');
+      if (newVer) setLocalStoreVersion(newVer);
       fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
     } catch {
       // Offline fallback
@@ -1428,7 +1532,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       for (const page of sorted) {
         await upsertSupabaseCataloguePage(page);
       }
-      await bumpBackendStoreVersion('catalogue_pages_updated');
+      const newVer = await bumpBackendStoreVersion('catalogue_pages_updated');
+      if (newVer) setLocalStoreVersion(newVer);
       fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
     } catch {
       // Offline fallback
