@@ -17,10 +17,21 @@ const HeroSectionComponent: React.FC<HeroSectionProps> = ({
   const [isPaused, setIsPaused] = useState(false);
 
   // Collect array of hero images (supports multiple images uploaded from Admin Panel)
-  const heroImages =
+  const rawHeroImages =
     heroContent.switchImages && heroContent.switchImages.length > 0
       ? heroContent.switchImages
-      : [heroContent.switchImageUrl || 'hero-fan-regulator'];
+      : heroContent.switchImageUrl
+      ? [heroContent.switchImageUrl]
+      : [];
+
+  const heroImages = rawHeroImages.filter(
+    (img) =>
+      img &&
+      img.trim() !== '' &&
+      img !== 'hero-fan-regulator' &&
+      img !== 'fan-regulator-5step' &&
+      img !== 'fan-regulator-white'
+  );
 
   // Auto-slide transition effect every 3 seconds
   useEffect(() => {
@@ -105,18 +116,26 @@ const HeroSectionComponent: React.FC<HeroSectionProps> = ({
           >
             {/* Product Cutout Slider with Smooth Cross-Fade Transition */}
             <div className="relative z-10 w-full flex items-center justify-center h-[130px] xs:h-[150px] sm:h-[180px] lg:h-[260px] px-0.5">
-              {heroImages.map((img, idx) => (
-                <div
-                  key={idx}
-                  className={`w-full h-full flex items-center justify-center transition-opacity duration-300 drop-shadow-2xl bg-transparent lg:scale-110 xl:scale-125 ${
-                    idx === currentIdx
-                      ? 'opacity-100 relative pointer-events-auto'
-                      : 'opacity-0 absolute pointer-events-none'
-                  }`}
-                >
-                  <ProductVisual type={img} size="hero" className="w-full max-w-[120px] xs:max-w-[135px] sm:max-w-[180px] lg:max-w-[260px] aspect-square" />
-                </div>
-              ))}
+              {heroImages.length === 0 ? (
+                <div className="w-full max-w-[120px] xs:max-w-[135px] sm:max-w-[180px] lg:max-w-[260px] aspect-square rounded-2xl skeleton-shimmer-dark shadow-xl" />
+              ) : (
+                heroImages.map((img, idx) => (
+                  <div
+                    key={idx}
+                    className={`w-full h-full flex items-center justify-center transition-opacity duration-300 drop-shadow-2xl bg-transparent lg:scale-110 xl:scale-125 ${
+                      idx === currentIdx
+                        ? 'opacity-100 relative pointer-events-auto'
+                        : 'opacity-0 absolute pointer-events-none'
+                    }`}
+                  >
+                    <ProductVisual
+                      type={img}
+                      size="hero"
+                      className="w-full max-w-[120px] xs:max-w-[135px] sm:max-w-[180px] lg:max-w-[260px] aspect-square"
+                    />
+                  </div>
+                ))
+              )}
             </div>
 
             {/* Slide Pagination Dots for multiple hero images */}

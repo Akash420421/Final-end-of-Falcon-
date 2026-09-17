@@ -354,7 +354,7 @@ export const CategoryProductsView: React.FC<CategoryProductsViewProps> = ({
                     type={
                       product.images && product.images.length > 0
                         ? product.images[0]
-                        : product.image || 'fan-regulator-5step'
+                        : product.image || ''
                     }
                     size="card"
                     className="w-full h-full"

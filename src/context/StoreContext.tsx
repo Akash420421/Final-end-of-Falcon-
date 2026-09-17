@@ -334,12 +334,15 @@ const hasAnyCachedStoreData = (): boolean => {
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Always start with 'loading' on page reload until fresh check is triggered, or 'error' if offline
+  // Fast Initial Render:
+  // If user has cached products or categories in localStorage, immediately set 'success'
+  // so the real cards render immediately without replacing the whole page with full-card skeletons.
+  // Then background sync runs smoothly to validate freshness.
   const [initialSyncStatus, setInitialSyncStatus] = useState<'loading' | 'success' | 'error'>(() => {
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       return hasAnyCachedStoreData() ? 'success' : 'error';
     }
-    return 'loading';
+    return hasAnyCachedStoreData() ? 'success' : 'loading';
   });
   const [initialSyncError, setInitialSyncError] = useState<string | null>(null);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(() => {
