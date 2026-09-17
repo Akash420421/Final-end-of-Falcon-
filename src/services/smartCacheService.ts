@@ -126,9 +126,6 @@ export function hardPurgeLocalStoreCache(): void {
   const keysToPurge = [
     'falcon_products',
     'falcon_categories',
-    'falcon_company_details',
-    'falcon_hero_content',
-    'falcon_logo_image',
     'falcon_why_choose_us',
     'falcon_catalogue_settings',
     CACHE_META_KEY,

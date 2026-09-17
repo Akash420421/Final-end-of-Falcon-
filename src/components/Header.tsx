@@ -16,7 +16,7 @@ interface HeaderProps {
   onSelectCategory?: (categoryId: string) => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({
+const HeaderComponent: React.FC<HeaderProps> = ({
   onOpenPhoneModal,
   onOpenWhatsApp,
   onToggleMenu,
@@ -128,7 +128,7 @@ export const Header: React.FC<HeaderProps> = ({
   const shouldHideText = companyDetails.hideLogoText === true;
 
   return (
-    <header className={`${themeStyles.header} h-[68px] lg:h-[84px] px-4 lg:px-8 w-full transition-all duration-300`}>
+    <header className={`${themeStyles.header} h-[68px] lg:h-[84px] px-4 lg:px-8 w-full`}>
       <div className="w-full max-w-7xl mx-auto h-full flex items-center justify-between gap-4">
         {/* Left: Mobile Drawer Trigger + Falcon Brand Logo */}
         <div className="flex items-center gap-2.5 lg:gap-4 shrink-0">
@@ -209,21 +209,20 @@ export const Header: React.FC<HeaderProps> = ({
                     {/* Mobile View (< lg): Classic compact stacked brand name */}
                     <div className="flex lg:hidden flex-col leading-tight select-none">
                       <span className={`text-[15px] font-black font-brand tracking-wide ${themeStyles.brandTitle}`}>
-                        Falcon
+                        {companyDetails.brandName ? companyDetails.brandName.split(' ')[0] : 'Falcon'}
                       </span>
                       <span className="text-[9px] font-black font-brand tracking-[0.18em] uppercase text-[#E0183D]">
-                        ELECTRICS
+                        {companyDetails.brandName && companyDetails.brandName.split(' ').length > 1
+                          ? companyDetails.brandName.split(' ').slice(1).join(' ')
+                          : 'ELECTRICS'}
                       </span>
                     </div>
 
-                    {/* Desktop View (>= lg): Single horizontal line with first letter capital for both words in black, and RED uppercase subtitle */}
+                    {/* Desktop View (>= lg): Single horizontal line with brand name and RED uppercase subtitle */}
                     <div className="hidden lg:flex flex-col justify-center select-none py-0.5">
                       <div className="flex items-baseline gap-1.5 leading-none">
-                        <span className="text-[20px] xl:text-[22px] font-black font-brand tracking-tight text-slate-900">
-                          Falcon
-                        </span>
-                        <span className="text-[20px] xl:text-[22px] font-black font-brand tracking-tight text-slate-900">
-                          Electrics
+                        <span className={`text-[20px] xl:text-[22px] font-black font-brand tracking-tight ${themeStyles.brandTitle}`}>
+                          {companyDetails.brandName || 'Falcon Electrics'}
                         </span>
                       </div>
                       {currentTagline && (
@@ -476,5 +475,7 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
+
+export const Header = React.memo(HeaderComponent);
 
 

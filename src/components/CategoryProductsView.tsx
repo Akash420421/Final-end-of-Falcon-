@@ -324,18 +324,8 @@ export const CategoryProductsView: React.FC<CategoryProductsViewProps> = ({
               onClick={() => onSelectProduct(product)}
               className="bg-white rounded-2xl lg:rounded-3xl p-3 lg:p-5 border border-slate-200/90 shadow-sm hover:shadow-xl lg:hover:-translate-y-1.5 transition-all duration-200 cursor-pointer flex flex-col justify-between group active:scale-98 relative"
             >
-              {/* Product Visual Container (Positioning reference for image, subtle edge accent & badges) */}
+              {/* Product Visual Container (Positioning reference for image & badges) */}
               <div className="relative w-full bg-slate-100 rounded-xl lg:rounded-2xl mb-2.5 lg:mb-3 h-36 sm:h-40 lg:h-48 flex items-center justify-center border border-slate-200/80 group-hover:border-slate-300 transition-colors overflow-hidden">
-                {/* Subtle Decorative Edge Accent — Thin, elegant Falcon brand corner accent */}
-                <div
-                  aria-hidden="true"
-                  className="absolute top-0 left-0 w-8 sm:w-10 lg:w-12 h-[1.5px] bg-gradient-to-r from-[#E0183D] via-[#E0183D]/50 to-transparent pointer-events-none z-10"
-                />
-                <div
-                  aria-hidden="true"
-                  className="absolute top-0 left-0 h-8 sm:h-10 lg:h-12 w-[1.5px] bg-gradient-to-b from-[#E0183D] via-[#E0183D]/50 to-transparent pointer-events-none z-10"
-                />
-
                 {/* Top Left Badge (e.g. Popular, Winter Special) — anchored inside image area */}
                 {product.badge && (
                   <div className="absolute top-2 left-2 lg:top-2.5 lg:left-2.5 z-10 max-w-[calc(100%-54px)] lg:max-w-[calc(100%-60px)] pointer-events-none">

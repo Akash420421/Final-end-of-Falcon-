@@ -8,7 +8,7 @@ interface HeroSectionProps {
   onViewCatalogue?: () => void;
 }
 
-export const HeroSection: React.FC<HeroSectionProps> = ({
+const HeroSectionComponent: React.FC<HeroSectionProps> = ({
   onViewProducts,
   onViewCatalogue,
 }) => {
@@ -41,10 +41,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   }, [heroImages.length, currentIdx]);
 
   return (
-    <section className="bg-[#101124] text-white pt-4 pb-6 lg:pt-12 lg:pb-12 px-4 lg:px-8 relative overflow-hidden">
-      {/* Background Subtle Red Dot Matrix & Glow */}
-      <div className="absolute top-0 right-0 w-64 lg:w-[600px] h-64 lg:h-[600px] bg-red-600/10 rounded-full blur-3xl pointer-events-none"></div>
-
+    <section className="bg-[#101124] text-white pt-4 pb-6 lg:pt-12 lg:pb-12 px-4 lg:px-8 relative overflow-hidden min-h-[220px] sm:min-h-[260px] lg:min-h-[340px]">
       <div className="max-w-md lg:max-w-7xl mx-auto relative z-10">
         {/* Top Split Layout: Content on Left, Product Visual on Right */}
         <div className="grid grid-cols-12 gap-2 sm:gap-6 lg:gap-12 items-center">
@@ -106,59 +103,18 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             onTouchStart={() => setIsPaused(true)}
             onTouchEnd={() => setIsPaused(false)}
           >
-            {/* Conditional Angled Polygon Backdrop & Dot Matrix */}
-            {heroContent.showHeroBgShape !== false && (
-              <>
-                <div
-                  className={`absolute right-0 sm:right-1 lg:-right-4 top-1/2 -translate-y-1/2 w-24 h-24 xs:w-28 xs:h-28 sm:w-36 sm:h-36 lg:w-72 lg:h-72 xl:w-80 xl:h-80 transform rotate-6 sm:rotate-12 rounded-2xl lg:rounded-3xl shadow-lg -z-0 border transition-all duration-300 ${
-                    heroContent.heroBgColor === 'blue'
-                      ? 'bg-gradient-to-br from-[#1E50C0] to-[#12368B] border-blue-400/30'
-                      : heroContent.heroBgColor === 'amber'
-                      ? 'bg-gradient-to-br from-[#D97706] to-[#92400E] border-amber-400/30'
-                      : heroContent.heroBgColor === 'emerald'
-                      ? 'bg-gradient-to-br from-[#0D8A58] to-[#065A38] border-emerald-400/30'
-                      : heroContent.heroBgColor === 'purple'
-                      ? 'bg-gradient-to-br from-[#5D3EBC] to-[#3B2384] border-purple-400/30'
-                      : heroContent.heroBgColor === 'dark'
-                      ? 'bg-gradient-to-br from-slate-800 to-slate-950 border-slate-700'
-                      : 'bg-gradient-to-br from-[#E0183D] to-[#B00E2E] border-red-400/30'
-                  }`}
-                ></div>
-
-                {/* Dot Matrix Pattern */}
-                <div className="absolute right-0 top-0 w-16 h-16 sm:w-20 sm:h-20 lg:w-40 lg:h-40 opacity-30 grid grid-cols-4 gap-1 lg:gap-3 pointer-events-none -z-0">
-                  {[...Array(16)].map((_, i) => (
-                    <div
-                      key={i}
-                      className={`w-1 h-1 lg:w-2 lg:h-2 rounded-full ${
-                        heroContent.heroBgColor === 'blue'
-                          ? 'bg-blue-400'
-                          : heroContent.heroBgColor === 'amber'
-                          ? 'bg-amber-400'
-                          : heroContent.heroBgColor === 'emerald'
-                          ? 'bg-emerald-400'
-                          : heroContent.heroBgColor === 'purple'
-                          ? 'bg-purple-400'
-                          : 'bg-red-400'
-                      }`}
-                    ></div>
-                  ))}
-                </div>
-              </>
-            )}
-
             {/* Product Cutout Slider with Smooth Cross-Fade Transition */}
-            <div className="relative z-10 w-full flex items-center justify-center min-h-[110px] xs:min-h-[130px] sm:min-h-[160px] lg:min-h-[220px] px-0.5">
+            <div className="relative z-10 w-full flex items-center justify-center h-[130px] xs:h-[150px] sm:h-[180px] lg:h-[260px] px-0.5">
               {heroImages.map((img, idx) => (
                 <div
                   key={idx}
-                  className={`w-full flex items-center justify-center transition-all duration-700 ease-in-out transform drop-shadow-2xl bg-transparent lg:scale-110 xl:scale-125 ${
+                  className={`w-full h-full flex items-center justify-center transition-opacity duration-300 drop-shadow-2xl bg-transparent lg:scale-110 xl:scale-125 ${
                     idx === currentIdx
-                      ? 'opacity-100 scale-100 relative pointer-events-auto'
-                      : 'opacity-0 scale-95 absolute pointer-events-none'
+                      ? 'opacity-100 relative pointer-events-auto'
+                      : 'opacity-0 absolute pointer-events-none'
                   }`}
                 >
-                  <ProductVisual type={img} size="hero" className="w-full max-w-[120px] xs:max-w-[135px] sm:max-w-[180px] lg:max-w-[280px]" />
+                  <ProductVisual type={img} size="hero" className="w-full max-w-[120px] xs:max-w-[135px] sm:max-w-[180px] lg:max-w-[260px] aspect-square" />
                 </div>
               ))}
             </div>
@@ -188,4 +144,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     </section>
   );
 };
+
+export const HeroSection = React.memo(HeroSectionComponent);
 

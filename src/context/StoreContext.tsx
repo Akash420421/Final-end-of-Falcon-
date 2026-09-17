@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Product, Category, QuoteRequest, CatalogueSettings, CataloguePage, CompanyDetails } from '../types';
 import { uploadOrCompressImage } from '../utils/supabaseStorage';
 import {
@@ -233,7 +233,7 @@ const defaultHeroContent: HeroContent = {
   headline: 'High Performance Switchgear & Modular Accessories',
   subtitle: 'Heavy-duty 16A fan regulators, heater rotary switches & appliance controls.',
   switchImageUrl: '',
-  showHeroBgShape: true,
+  showHeroBgShape: false,
   heroBgColor: 'red',
 };
 
@@ -351,7 +351,19 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [heroContent, setHeroContentState] = useState<HeroContent>(() => {
     const saved = safeLocalStorageGet('falcon_hero_content');
-    return saved ? JSON.parse(saved) : defaultHeroContent;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return {
+          ...parsed,
+          showHeroBgShape: false,
+        };
+      } catch {}
+    }
+    return {
+      ...defaultHeroContent,
+      showHeroBgShape: false,
+    };
   });
 
   const [logoImageUrl, setLogoImageUrlState] = useState<string>(() => {
@@ -436,6 +448,42 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setInitialSyncStatus('success');
     setSupabaseError('Running in offline mode with cached data');
   };
+
+  // Safe updaters with deep equality checks to prevent re-renders when data has not changed
+  const updateCompanyDetailsSafe = useCallback((fresh: CompanyDetails) => {
+    setCompanyDetailsState((prev) => {
+      if (JSON.stringify(prev) === JSON.stringify(fresh)) return prev;
+      return fresh;
+    });
+  }, []);
+
+  const updateHeroContentSafe = useCallback((fresh: HeroContent) => {
+    setHeroContentState((prev) => {
+      if (JSON.stringify(prev) === JSON.stringify(fresh)) return prev;
+      return fresh;
+    });
+  }, []);
+
+  const updateLogoImageSafe = useCallback((fresh: string) => {
+    setLogoImageUrlState((prev) => {
+      if (prev === fresh) return prev;
+      return fresh;
+    });
+  }, []);
+
+  const updateProductsSafe = useCallback((fresh: Product[]) => {
+    setProductsState((prev) => {
+      if (JSON.stringify(prev) === JSON.stringify(fresh)) return prev;
+      return fresh;
+    });
+  }, []);
+
+  const updateCategoriesSafe = useCallback((fresh: Category[]) => {
+    setCategoriesState((prev) => {
+      if (JSON.stringify(prev) === JSON.stringify(fresh)) return prev;
+      return fresh;
+    });
+  }, []);
 
   // Session expiry check — auto-logout only if session is explicitly expired, and slide refresh on active use
   useEffect(() => {
@@ -550,9 +598,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           return;
         }
 
-        // Option C Hard Purge: Clear stale cached products and settings
-        hardPurgeLocalStoreCache();
-
+        // Stale-While-Revalidate: Keep cached store data active and seamlessly overwrite with fresh data when response arrives.
         // Fetch fresh products, categories, settings, and catalogue in parallel
         const [productsRes, categoriesRes, settingsRes, cataloguePagesRes] = await Promise.allSettled([
           fetchSupabaseProducts(),
@@ -566,14 +612,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // 1. Update Products if fetched
         if (productsRes.status === 'fulfilled' && Array.isArray(productsRes.value)) {
           const freshProducts = productsRes.value;
-          setProductsState(freshProducts);
+          updateProductsSafe(freshProducts);
           safeLocalStorageSet('falcon_products', JSON.stringify(freshProducts));
         }
 
         // 2. Update Categories if fetched
         if (categoriesRes.status === 'fulfilled' && Array.isArray(categoriesRes.value)) {
           const freshCats = [...categoriesRes.value].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-          setCategoriesState(freshCats);
+          updateCategoriesSafe(freshCats);
           safeLocalStorageSet('falcon_categories', JSON.stringify(freshCats));
         }
 
@@ -582,26 +628,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           const s = settingsRes.value;
           if (s.companyDetails) {
             const merged = mergeCompanyDetails(s.companyDetails);
-            setCompanyDetailsState(merged);
+            updateCompanyDetailsSafe(merged);
             safeLocalStorageSet('falcon_company_details', JSON.stringify(merged));
           }
           if (s.heroContent) {
             const mergedHero: HeroContent = {
               ...defaultHeroContent,
               ...s.heroContent,
+              showHeroBgShape: false,
               badge: s.heroContent.badge !== undefined ? s.heroContent.badge : defaultHeroContent.badge,
               showBadge: s.heroContent.showBadge !== undefined ? s.heroContent.showBadge : true,
             };
-            setHeroContentState(mergedHero);
+            updateHeroContentSafe(mergedHero);
             safeLocalStorageSet('falcon_hero_content', JSON.stringify(mergedHero));
           }
           if (s.logoImageUrl !== undefined) {
-            setLogoImageUrlState(s.logoImageUrl);
+            updateLogoImageSafe(s.logoImageUrl);
             safeLocalStorageSet('falcon_logo_image', s.logoImageUrl);
           }
           if (s.whyChooseUs) {
-            setWhyChooseUsState(s.whyChooseUs);
-            safeLocalStorageSet('falcon_why_choose_us', JSON.stringify(s.whyChooseUs));
+            const whyData = Array.isArray(s.whyChooseUs) && s.whyChooseUs.length > 0 ? s.whyChooseUs : defaultWhyChooseUsData;
+            setWhyChooseUsState(whyData);
+            safeLocalStorageSet('falcon_why_choose_us', JSON.stringify(whyData));
           }
         }
 
@@ -666,19 +714,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const initSupabaseSync = async () => {
       try {
         const hasCached = hasAnyCachedStoreData();
-        const expired = isCacheExpired(); // 1-Hour TTL: returns true if > 1 hour (3600000ms) or first visit
 
-        if (!hasCached || expired) {
-          // If 1 hour has expired, purge stale cache to load 100% fresh data
-          if (expired && hasCached) {
-            hardPurgeLocalStoreCache();
-          }
-
-          // FIRST LOAD or 1-HOUR EXPIRED RELOAD — User sees loading and receives full latest dataset
+        // Stale-While-Revalidate: If we have cached store data, do NOT wipe the cache or block UI with a skeleton!
+        // Instant visual paint from cache; background update syncs latest freshness.
+        if (!hasCached) {
           setInitialSyncStatus('loading');
           setInitialSyncError(null);
+        }
 
-          const [
+        const [
             settingsRes,
             productsRes,
             categoriesRes,
@@ -715,26 +759,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             markDataInitialized();
             if (settingsResult.companyDetails) {
               const merged = mergeCompanyDetails(settingsResult.companyDetails);
-              setCompanyDetailsState(merged);
+              updateCompanyDetailsSafe(merged);
               safeLocalStorageSet('falcon_company_details', JSON.stringify(merged));
             }
             if (settingsResult.heroContent) {
               const mergedHero: HeroContent = {
                 ...defaultHeroContent,
                 ...settingsResult.heroContent,
+                showHeroBgShape: false,
                 badge: settingsResult.heroContent.badge !== undefined ? settingsResult.heroContent.badge : defaultHeroContent.badge,
                 showBadge: settingsResult.heroContent.showBadge !== undefined ? settingsResult.heroContent.showBadge : true,
               };
-              setHeroContentState(mergedHero);
+              updateHeroContentSafe(mergedHero);
               safeLocalStorageSet('falcon_hero_content', JSON.stringify(mergedHero));
             }
             if (settingsResult.logoImageUrl !== undefined) {
-              setLogoImageUrlState(settingsResult.logoImageUrl);
+              updateLogoImageSafe(settingsResult.logoImageUrl);
               safeLocalStorageSet('falcon_logo_image', settingsResult.logoImageUrl);
             }
             if (settingsResult.whyChooseUs) {
-              setWhyChooseUsState(settingsResult.whyChooseUs);
-              safeLocalStorageSet('falcon_why_choose_us', JSON.stringify(settingsResult.whyChooseUs));
+              const whyData = Array.isArray(settingsResult.whyChooseUs) && settingsResult.whyChooseUs.length > 0 ? settingsResult.whyChooseUs : defaultWhyChooseUsData;
+              setWhyChooseUsState(whyData);
+              safeLocalStorageSet('falcon_why_choose_us', JSON.stringify(whyData));
             }
           } else if (!isDataInitialized() && !isSeedingRef.current) {
             // Attempt first-time seed if table is blank
@@ -751,7 +797,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           // 2. Process Products (Save real products to state & cache)
           if (productsResult && productsResult.length > 0) {
             markDataInitialized();
-            setProductsState(productsResult);
+            updateProductsSafe(productsResult);
             safeLocalStorageSet('falcon_products', JSON.stringify(productsResult));
           }
 
@@ -759,7 +805,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           if (categoriesResult && categoriesResult.length > 0) {
             markDataInitialized();
             const sortedCats = [...categoriesResult].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-            setCategoriesState(sortedCats);
+            updateCategoriesSafe(sortedCats);
             safeLocalStorageSet('falcon_categories', JSON.stringify(sortedCats));
           }
 
@@ -842,34 +888,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setIsSupabaseConnected(true);
           setInitialSyncError(null);
           setInitialSyncStatus('success');
-        } else {
-          // SUBSEQUENT RELOAD / REVISIT (WITHIN 1 HOUR):
-          // Step A — FAST DISPLAY (0ms):
-          // Cached state is already rendered immediately.
-          setIsSupabaseConnected(true);
-          setInitialSyncError(null);
-          setInitialSyncStatus('success');
-
-          // Check if catalogue pages already have images in IndexedDB
-          try {
-            const idbPages = await getCataloguePagesFromIdb();
-            if (idbPages && idbPages.some((p) => Boolean(p.imageUrl || p.image))) {
-              setCatalogueSettingsState((prev) => ({
-                ...prev,
-                pages: [...idbPages].sort((a, b) => (a.pageNumber ?? 0) - (b.pageNumber ?? 0)),
-              }));
-              setIsCatalogueLoaded(true);
-              idbPages.forEach((p) => {
-                const u = p.imageUrl || p.image;
-                if (u) preloadCatalogueImage(u);
-              });
-            }
-          } catch {}
-
-          // Step B — FRESH BACKEND CHECK:
-          // Perform lightweight version & freshness check in background
-          await syncFreshnessInBackground();
-        }
       } catch (err: any) {
         if (isMounted) {
           setIsCatalogueLoaded(true);

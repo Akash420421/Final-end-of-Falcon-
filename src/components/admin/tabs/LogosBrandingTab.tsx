@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Image as ImageIcon,
   Sparkles,
@@ -14,6 +14,9 @@ import {
   Link as LinkIcon,
   Smartphone,
   Download,
+  Eye,
+  EyeOff,
+  Tag,
 } from 'lucide-react';
 import { CompanyDetails, HeroContent } from '../../../types';
 import { ProductVisual } from '../../ProductVisual';
@@ -65,6 +68,14 @@ export const LogosBrandingTab: React.FC<LogosBrandingTabProps> = ({
   const [heroPhotoUrlInput, setHeroPhotoUrlInput] = useState('');
   const [editingHero, setEditingHero] = useState<HeroContent>(heroContent);
   const [editingCompany, setEditingCompany] = useState<CompanyDetails>(companyDetails);
+
+  useEffect(() => {
+    setEditingHero(heroContent);
+  }, [heroContent]);
+
+  useEffect(() => {
+    setEditingCompany(companyDetails);
+  }, [companyDetails]);
 
   const handleSaveHero = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -783,6 +794,67 @@ export const LogosBrandingTab: React.FC<LogosBrandingTabProps> = ({
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Hero Top Accent Badge Settings (e.g. DIRECT FACTORY MANUFACTURER) */}
+        <div className="bg-slate-900/90 p-4 rounded-xl border border-slate-800 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-800">
+            <div>
+              <div className="flex items-center gap-2">
+                <Tag className="w-4 h-4 text-[#E0183D]" />
+                <span className="text-xs font-black text-white">Top Accent Badge (e.g. DIRECT FACTORY MANUFACTURER)</span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                The small red highlighted label shown right above the Hero Headline on the homepage.
+              </p>
+            </div>
+
+            {/* Show / Hide Toggle Button */}
+            <button
+              type="button"
+              onClick={() => {
+                const currentShow = editingHero.showBadge !== false;
+                setEditingHero({ ...editingHero, showBadge: !currentShow });
+              }}
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition border flex items-center justify-center gap-1.5 self-start sm:self-auto min-h-[36px] ${
+                editingHero.showBadge !== false
+                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60 shadow-sm'
+                  : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
+              }`}
+            >
+              {editingHero.showBadge !== false ? (
+                <>
+                  <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Badge Visible (ON)</span>
+                </>
+              ) : (
+                <>
+                  <EyeOff className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Badge Hidden (OFF)</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {editingHero.showBadge !== false && (
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-bold uppercase text-slate-400">Badge Text</label>
+                {editingHero.badge?.trim() && (
+                  <span className="text-[10px] font-black uppercase text-[#E0183D] bg-red-950/60 px-2.5 py-0.5 rounded border border-red-800/40">
+                    Live Preview: {editingHero.badge.trim()}
+                  </span>
+                )}
+              </div>
+              <input
+                type="text"
+                value={editingHero.badge !== undefined ? editingHero.badge : 'DIRECT FACTORY MANUFACTURER'}
+                onChange={(e) => setEditingHero({ ...editingHero, badge: e.target.value })}
+                placeholder="e.g. DIRECT FACTORY MANUFACTURER or 100% GENUINE"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#E0183D]"
+              />
+            </div>
+          )}
         </div>
 
         {/* Hero Headlines & Text */}
