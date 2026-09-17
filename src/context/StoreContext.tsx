@@ -47,6 +47,9 @@ import {
   setLocalStoreVersion,
   fetchServerStoreVersion,
   hardPurgeLocalStoreCache,
+  setLocalCacheTimestamp,
+  getLocalCacheTimestamp,
+  isCacheExpired,
   FreshnessMetadata,
 } from '../services/smartCacheService';
 import {
@@ -509,7 +512,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const localVer = getLocalStoreVersion();
         const cachedMeta = getCachedFreshnessMetadata();
 
-        let isOutdated = force;
+        let isOutdated = force || isCacheExpired();
 
         // Check A: Dedicated integer version check (Option C)
         if (serverVer && typeof serverVer.version === 'number') {
@@ -652,6 +655,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (freshMeta) {
           setCachedFreshnessMetadata(freshMeta);
         }
+        setLocalCacheTimestamp(Date.now());
         markDataInitialized();
       } catch (err) {
         console.warn('[syncFreshnessInBackground error]:', err);
@@ -661,10 +665,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const initSupabaseSync = async () => {
       try {
         const hasCached = hasAnyCachedStoreData();
+        const expired = isCacheExpired(); // 1-Hour TTL: returns true if > 1 hour (3600000ms) or first visit
 
-        if (!hasCached) {
-          // FIRST LOAD — User has no local cache.
-          // Show skeleton loading and fetch full initial datasets from backend.
+        if (!hasCached || expired) {
+          // If 1 hour has expired, purge stale cache to load 100% fresh data
+          if (expired && hasCached) {
+            hardPurgeLocalStoreCache();
+          }
+
+          // FIRST LOAD or 1-HOUR EXPIRED RELOAD — User sees loading and receives full latest dataset
           setInitialSyncStatus('loading');
           setInitialSyncError(null);
 
@@ -817,6 +826,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }
           });
 
+          // Save 1-hour TTL cache timestamp
+          setLocalCacheTimestamp(Date.now());
+
           // ONLY trigger offline error screen if device is genuinely OFFLINE with NO cached data!
           const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
           if (isOffline && !hasAnyRemoteData && !hasAnyCachedStoreData()) {
@@ -830,7 +842,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setInitialSyncError(null);
           setInitialSyncStatus('success');
         } else {
-          // SUBSEQUENT RELOAD / REVISIT:
+          // SUBSEQUENT RELOAD / REVISIT (WITHIN 1 HOUR):
           // Step A — FAST DISPLAY (0ms):
           // Cached state is already rendered immediately.
           setIsSupabaseConnected(true);

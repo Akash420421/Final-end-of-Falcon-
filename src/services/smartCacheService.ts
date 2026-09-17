@@ -5,6 +5,8 @@ export const CACHE_META_KEY = 'falcon_cache_metadata';
 export const CACHE_INITIALIZED_KEY = 'falcon_data_initialized';
 export const STORE_VERSION_KEY = 'falcon_store_version';
 export const STORE_VERSION_ROW_ID = 'store_version';
+export const CACHE_TIMESTAMP_KEY = 'falcon_cache_timestamp';
+export const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour (in milliseconds)
 
 export interface FreshnessMetadata {
   serverVersion?: number | null;
@@ -18,6 +20,42 @@ export interface FreshnessMetadata {
   latestCatalogueUpdatedAt: string | null;
   storeSettingsUpdatedAt: string | null;
   timestamp: number;
+}
+
+/**
+ * Gets the timestamp (in epoch ms) when local store cache was saved
+ */
+export function getLocalCacheTimestamp(): number | null {
+  try {
+    const raw = safeLocalStorageGet(CACHE_TIMESTAMP_KEY);
+    if (!raw) return null;
+    const num = parseInt(raw, 10);
+    return isNaN(num) ? null : num;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Sets the timestamp (in epoch ms) when local store cache was saved
+ */
+export function setLocalCacheTimestamp(timestamp: number = Date.now()): boolean {
+  try {
+    return safeLocalStorageSet(CACHE_TIMESTAMP_KEY, String(timestamp));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Checks if the 1-hour TTL timer has expired.
+ * Returns true if no timestamp exists or if more than 1 hour (3600000ms) has passed.
+ */
+export function isCacheExpired(ttlMs: number = CACHE_TTL_MS): boolean {
+  const ts = getLocalCacheTimestamp();
+  if (!ts) return true;
+  const age = Date.now() - ts;
+  return age > ttlMs;
 }
 
 /**
@@ -95,6 +133,7 @@ export function hardPurgeLocalStoreCache(): void {
     'falcon_catalogue_settings',
     CACHE_META_KEY,
     CACHE_INITIALIZED_KEY,
+    CACHE_TIMESTAMP_KEY,
   ];
 
   for (const key of keysToPurge) {
@@ -375,6 +414,7 @@ export async function bumpBackendStoreVersion(
 
     // 3. Keep local storage on admin device in sync immediately
     setLocalStoreVersion(nextVersion);
+    setLocalCacheTimestamp(Date.now());
 
     // 4. Dual-sync into company_branding for backward compatibility
     try {
