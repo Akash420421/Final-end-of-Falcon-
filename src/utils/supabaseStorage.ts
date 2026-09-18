@@ -48,23 +48,14 @@ export async function uploadOrCompressImage(
     const randomSuffix = Math.random().toString(36).substring(2, 9);
     const fileName = `${cleanFolder}/${Date.now()}_${randomSuffix}.webp`;
 
-    // 2. Attempt upload to Supabase Storage with a 2.5-second timeout safeguard
-    const uploadPromise = supabase.storage
+    // 2. Upload to Supabase Storage with 1-year CDN caching
+    const { data: uploadData, error: uploadError } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(fileName, compressed.blob, {
         contentType: 'image/webp',
         cacheControl: CACHE_CONTROL_1_YEAR,
         upsert: true,
       });
-
-    const timeoutPromise = new Promise<{ data: null; error: any }>((resolve) =>
-      setTimeout(() => resolve({ data: null, error: new Error('Storage timeout') }), 2500)
-    );
-
-    const { data: uploadData, error: uploadError } = await Promise.race([
-      uploadPromise,
-      timeoutPromise,
-    ]);
 
     if (!uploadError && uploadData?.path) {
       const { data: publicUrlData } = supabase.storage
@@ -74,17 +65,27 @@ export async function uploadOrCompressImage(
       if (publicUrlData?.publicUrl) {
         return publicUrlData.publicUrl;
       }
+    } else if (uploadError) {
+      console.warn('[Supabase Storage] Upload error, falling back:', uploadError.message);
     }
-
-    // Return the high-efficiency WebP base64 dataUrl directly without redundant recompression
-    if (compressed?.dataUrl) {
-      return compressed.dataUrl;
-    }
-  } catch {
-    // Fallback to local optimized base64
+  } catch (err) {
+    console.warn('[Supabase Storage] Storage bucket upload fallback:', err);
   }
 
-  return typeof dataUrlOrFile === 'string' ? dataUrlOrFile : '';
+  // Fallback to local optimized base64 data URL
+  try {
+    let fallbackBlob: Blob;
+    if (typeof dataUrlOrFile === 'string') {
+      const res = await fetch(dataUrlOrFile);
+      fallbackBlob = await res.blob();
+    } else {
+      fallbackBlob = dataUrlOrFile;
+    }
+    const compressed = await compressImageToWebP(fallbackBlob, { maxWidth: 800, maxHeight: 800, quality: 0.75 });
+    return compressed.dataUrl;
+  } catch {
+    return typeof dataUrlOrFile === 'string' ? dataUrlOrFile : '';
+  }
 }
 
 /**

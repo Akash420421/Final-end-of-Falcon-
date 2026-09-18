@@ -218,7 +218,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
         isFirebaseConnected={isFirebaseConnected}
         onClose={onClose}
         onLogout={logoutAdmin}
-        onSaveAll={handleSyncAllToCloud}
       />
 
       {/* Responsive Horizontal Tabs Bar */}

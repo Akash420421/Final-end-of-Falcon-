@@ -16,7 +16,7 @@ interface HeaderProps {
   onSelectCategory?: (categoryId: string) => void;
 }
 
-const HeaderComponent: React.FC<HeaderProps> = ({
+export const Header: React.FC<HeaderProps> = ({
   onOpenPhoneModal,
   onOpenWhatsApp,
   onToggleMenu,
@@ -86,39 +86,20 @@ const HeaderComponent: React.FC<HeaderProps> = ({
 
   const themeStyles = getThemeClasses();
 
-  const lastTapTimestampRef = useRef(0);
-
   const handleLogoClick = () => {
-    const now = Date.now();
-    // Prevent synthetic duplicate click right after touchend
-    if (now - lastTapTimestampRef.current < 70) return;
-    lastTapTimestampRef.current = now;
-
+    // Increment click count for 10-click admin secret trigger
     clickCountRef.current += 1;
 
     if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
 
-    // Haptic feedback on mobile when tapping secret sequence
-    if (clickCountRef.current >= 5 && typeof navigator !== 'undefined' && navigator.vibrate) {
-      try {
-        navigator.vibrate(12);
-      } catch {}
-    }
-
-    // 10 continuous taps triggers the admin popup
     if (clickCountRef.current >= 10) {
       clickCountRef.current = 0;
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        try {
-          navigator.vibrate([25, 40, 25]);
-        } catch {}
-      }
       onAdminTrigger();
     } else {
-      // Reset clicks after 5 seconds of inactivity
+      // Reset clicks after 4 seconds of inactivity
       clickTimerRef.current = setTimeout(() => {
         clickCountRef.current = 0;
-      }, 5000);
+      }, 4000);
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -126,11 +107,9 @@ const HeaderComponent: React.FC<HeaderProps> = ({
 
   const currentTagline = companyDetails.logoTagline || companyDetails.tagline || 'Switch to excellence';
   const shouldHideText = companyDetails.hideLogoText === true;
-  const [isLogoLoaded, setIsLogoLoaded] = useState(false);
-  const [isBannerLoaded, setIsBannerLoaded] = useState(false);
 
   return (
-    <header className={`${themeStyles.header} h-[68px] lg:h-[84px] px-4 lg:px-8 w-full`}>
+    <header className={`${themeStyles.header} h-[68px] lg:h-[84px] px-4 lg:px-8 w-full transition-all duration-300`}>
       <div className="w-full max-w-7xl mx-auto h-full flex items-center justify-between gap-4">
         {/* Left: Mobile Drawer Trigger + Falcon Brand Logo */}
         <div className="flex items-center gap-2.5 lg:gap-4 shrink-0">
@@ -142,39 +121,30 @@ const HeaderComponent: React.FC<HeaderProps> = ({
             <Menu className="w-5 h-5" />
           </button>
 
-          {/* Falcon Logo / Custom Header Brand Banner (10 Rapid Taps triggers Admin Login) */}
+          {/* Falcon Logo / Custom Header Brand Banner (10 Clicks triggers Admin Login) */}
           <div
-            data-admin-trigger="true"
-            className="flex items-center gap-2.5 lg:gap-3.5 cursor-pointer select-none group py-1 touch-manipulation active:opacity-90"
+            className="flex items-center gap-2.5 lg:gap-3.5 cursor-pointer select-none group py-1"
             onClick={handleLogoClick}
-            title={companyDetails.brandName || 'Falcon Electrics'}
+            title={`${companyDetails.brandName || 'Falcon Electrics'} (Click to scroll top)`}
           >
             {/* Case 1: Custom Full Combined Header Brand Banner (Image containing custom logo + stylized colored name) */}
             {companyDetails.customHeaderBannerUrl ? (
-              <div className="relative h-10 sm:h-12 lg:h-16 flex items-center shrink-0 max-w-[210px] xs:max-w-[250px] sm:max-w-[320px] lg:max-w-[420px] overflow-hidden">
-                {!isBannerLoaded && (
-                  <div className="w-32 sm:w-48 lg:w-56 h-8 sm:h-10 lg:h-12 rounded-lg skeleton-shimmer shrink-0" />
-                )}
+              <div className="h-10 sm:h-12 lg:h-16 flex items-center shrink-0 max-w-[210px] xs:max-w-[250px] sm:max-w-[320px] lg:max-w-[420px] overflow-hidden">
                 <img
                   src={companyDetails.customHeaderBannerUrl}
                   alt={companyDetails.brandName || 'Falcon Electrics'}
-                  onLoad={() => setIsBannerLoaded(true)}
-                  className={`h-full w-auto max-w-full object-contain object-left transition-transform group-hover:scale-105 ${!isBannerLoaded ? 'hidden' : 'block'}`}
+                  className="h-full w-auto max-w-full object-contain object-left transition-transform group-hover:scale-105"
                 />
               </div>
             ) : (
               /* Case 2: Standard Separate Logo Icon + Text Layout */
               <>
                 {logoImageUrl ? (
-                  <div className="relative w-9 h-9 lg:w-16 lg:h-14 rounded-xl flex items-center justify-center shrink-0 overflow-hidden">
-                    {!isLogoLoaded && (
-                      <div className="absolute inset-0 rounded-xl skeleton-shimmer" />
-                    )}
+                  <div className="w-9 h-9 lg:w-16 lg:h-14 rounded-xl flex items-center justify-center shrink-0 overflow-hidden">
                     <img
                       src={logoImageUrl}
                       alt={companyDetails.brandName}
-                      onLoad={() => setIsLogoLoaded(true)}
-                      className={`max-w-full max-h-full object-contain transition-transform group-hover:scale-105 ${!isLogoLoaded ? 'opacity-0' : 'opacity-100 transition-opacity duration-200'}`}
+                      className="max-w-full max-h-full object-contain transition-transform group-hover:scale-105"
                     />
                   </div>
                 ) : (
@@ -219,20 +189,21 @@ const HeaderComponent: React.FC<HeaderProps> = ({
                     {/* Mobile View (< lg): Classic compact stacked brand name */}
                     <div className="flex lg:hidden flex-col leading-tight select-none">
                       <span className={`text-[15px] font-black font-brand tracking-wide ${themeStyles.brandTitle}`}>
-                        {companyDetails.brandName ? companyDetails.brandName.split(' ')[0] : 'Falcon'}
+                        Falcon
                       </span>
                       <span className="text-[9px] font-black font-brand tracking-[0.18em] uppercase text-[#E0183D]">
-                        {companyDetails.brandName && companyDetails.brandName.split(' ').length > 1
-                          ? companyDetails.brandName.split(' ').slice(1).join(' ')
-                          : 'ELECTRICS'}
+                        ELECTRICS
                       </span>
                     </div>
 
-                    {/* Desktop View (>= lg): Single horizontal line with brand name and RED uppercase subtitle */}
+                    {/* Desktop View (>= lg): Single horizontal line with first letter capital for both words in black, and RED uppercase subtitle */}
                     <div className="hidden lg:flex flex-col justify-center select-none py-0.5">
                       <div className="flex items-baseline gap-1.5 leading-none">
-                        <span className={`text-[20px] xl:text-[22px] font-black font-brand tracking-tight ${themeStyles.brandTitle}`}>
-                          {companyDetails.brandName || 'Falcon Electrics'}
+                        <span className="text-[20px] xl:text-[22px] font-black font-brand tracking-tight text-slate-900">
+                          Falcon
+                        </span>
+                        <span className="text-[20px] xl:text-[22px] font-black font-brand tracking-tight text-slate-900">
+                          Electrics
                         </span>
                       </div>
                       {currentTagline && (
@@ -485,7 +456,5 @@ const HeaderComponent: React.FC<HeaderProps> = ({
     </header>
   );
 };
-
-export const Header = React.memo(HeaderComponent);
 
 

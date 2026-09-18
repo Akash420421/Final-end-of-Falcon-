@@ -225,7 +225,8 @@ export async function compressImageFile(
   try {
     const res = await compressImageToWebP(file, options);
     return res.dataUrl;
-  } catch {
+  } catch (err) {
+    console.warn('[ImageCompressor] compressImageFile fallback:', err);
     return readFileAsDataUrl(file);
   }
 }

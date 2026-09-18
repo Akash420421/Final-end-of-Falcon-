@@ -1,25 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { ShieldCheck, ImageOff } from 'lucide-react';
+import { ShieldCheck, ImageIcon } from 'lucide-react';
 import { CataloguePage } from '../types';
-
-// Persistent in-memory image cache: Once loaded, image persists in browser memory for 0ms re-visits
-export const globalImageMemoryCache = new Map<string, HTMLImageElement>();
-
-/**
- * Preload catalogue image in background so when user views it, it renders in 0ms without any loading screen
- */
-export const preloadCatalogueImage = (url: string): void => {
-  if (!url || globalImageMemoryCache.has(url)) return;
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.onload = () => {
-    globalImageMemoryCache.set(url, img);
-    if ('decode' in img && typeof img.decode === 'function') {
-      img.decode().catch(() => {});
-    }
-  };
-  img.src = url;
-};
 
 interface ProtectedCatalogueCanvasProps {
   page: CataloguePage;
@@ -27,7 +8,6 @@ interface ProtectedCatalogueCanvasProps {
   showPageNumbers?: boolean;
   brandName?: string;
   isBlackout: boolean;
-  isDataLoading?: boolean;
 }
 
 export const ProtectedCatalogueCanvas: React.FC<ProtectedCatalogueCanvasProps> = ({
@@ -36,27 +16,16 @@ export const ProtectedCatalogueCanvas: React.FC<ProtectedCatalogueCanvasProps> =
   showPageNumbers = true,
   brandName = 'FALCON ELECTRICS',
   isBlackout,
-  isDataLoading = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState<number>(3 / 4); // Default 3:4 portrait
+  const imgElementRef = useRef<HTMLImageElement | null>(null);
 
   const imgUrl = page.imageUrl || page.image;
   const hasCustomImage = Boolean(imgUrl && (imgUrl.startsWith('http') || imgUrl.startsWith('data:') || imgUrl.includes('/')));
-
-  // Check if image already exists in global in-memory cache
-  const cachedImg = imgUrl ? globalImageMemoryCache.get(imgUrl) : null;
-  const isPreloaded = Boolean(cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0);
-
-  const [imageLoaded, setImageLoaded] = useState<boolean>(isPreloaded);
-  const [hasError, setHasError] = useState<boolean>(false);
-  const [aspectRatio, setAspectRatio] = useState<number>(() => {
-    if (isPreloaded && cachedImg && cachedImg.naturalHeight > 0) {
-      return cachedImg.naturalWidth / cachedImg.naturalHeight;
-    }
-    return 3 / 4; // Default 3:4 portrait
-  });
-  const imgElementRef = useRef<HTMLImageElement | null>(isPreloaded && cachedImg ? cachedImg : null);
 
   // Render to canvas
   const drawToCanvas = useCallback(() => {
@@ -148,25 +117,11 @@ export const ProtectedCatalogueCanvas: React.FC<ProtectedCatalogueCanvasProps> =
   useEffect(() => {
     if (!hasCustomImage || !imgUrl) return;
 
-    // If image is already cached, reuse immediately without network request
-    const existingImg = globalImageMemoryCache.get(imgUrl);
-    if (existingImg && existingImg.complete && existingImg.naturalWidth > 0) {
-      imgElementRef.current = existingImg;
-      if (existingImg.naturalHeight > 0) {
-        setAspectRatio(existingImg.naturalWidth / existingImg.naturalHeight);
-      }
-      setImageLoaded(true);
-      setHasError(false);
-      return;
-    }
-
     let isMounted = true;
     const img = new Image();
     img.crossOrigin = 'anonymous';
 
     img.onload = () => {
-      // Save in persistent global memory cache for 0ms future visits
-      globalImageMemoryCache.set(imgUrl, img);
       if (!isMounted) return;
       imgElementRef.current = img;
       if (img.naturalWidth && img.naturalHeight) {
@@ -244,7 +199,7 @@ export const ProtectedCatalogueCanvas: React.FC<ProtectedCatalogueCanvasProps> =
   return (
     <div
       ref={containerRef}
-      className="w-full max-w-2xl bg-slate-900 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-slate-800 transition-all relative group flex flex-col items-center justify-center catalogue-secure-zone select-none"
+      className="w-full max-w-2xl bg-white rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-slate-800 transition-all relative group flex flex-col items-center justify-center catalogue-secure-zone select-none"
       style={{
         WebkitTouchCallout: 'none',
         WebkitUserSelect: 'none',
@@ -274,98 +229,51 @@ export const ProtectedCatalogueCanvas: React.FC<ProtectedCatalogueCanvasProps> =
         </div>
       )}
 
-      {/* 3. Render Canvas or Futuristic DRM Loading Card */}
-      <div
-        className={`w-full relative overflow-hidden flex items-center justify-center rounded-xl sm:rounded-2xl ${
-          isBlackout ? 'opacity-0 bg-slate-950' : 'opacity-100 bg-slate-950'
-        }`}
-        style={{ minHeight: imageLoaded ? 'auto' : '360px' }}
-      >
-        {/* Sleek Futuristic DRM Loading Card while image is loading, fetching, or decoding */}
-        {!imageLoaded && !hasError && (
-          <div className="w-full aspect-[1/1.4] sm:aspect-[1.4/1] min-h-[360px] sm:min-h-[440px] bg-slate-900/95 flex flex-col items-center justify-center text-center p-6 sm:p-10 relative overflow-hidden select-none border border-slate-800 shadow-2xl">
-            {/* Background Ambient Radial Glow */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-slate-950 via-slate-900 to-slate-950" />
-            <div className="absolute inset-0 skeleton-shimmer-dark opacity-40" />
-
-            {/* Glowing Shield with Pulse Ring */}
-            <div className="relative z-10 mb-4">
-              <div className="absolute -inset-3 rounded-2xl bg-red-600/20 blur-lg animate-pulse" />
-              <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-800/90 border border-red-500/30 flex items-center justify-center shadow-xl shadow-black/50">
-                <ShieldCheck className="w-8 h-8 sm:w-10 sm:h-10 text-red-500 animate-pulse" />
-              </div>
-            </div>
-
-            {/* Page & Security Details */}
-            <div className="relative z-10 space-y-2 max-w-sm px-4">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] sm:text-[11px] font-extrabold tracking-wider uppercase">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-                Page {page.pageNumber || index + 1} • High Resolution DRM
-              </div>
-
-              <h3 className="text-base sm:text-lg font-bold text-slate-100 tracking-tight leading-snug">
-                {page.title || `Loading Catalogue Page ${page.pageNumber || index + 1}...`}
-              </h3>
-
-              {page.subtitle ? (
-                <p className="text-xs text-slate-400 line-clamp-1">
-                  {page.subtitle}
-                </p>
-              ) : (
-                <p className="text-xs text-slate-500 line-clamp-1">
-                  {brandName}
-                </p>
-              )}
-
-              {/* Shimmering Animated Progress Bar */}
-              <div className="pt-4 flex flex-col items-center gap-2">
-                <div className="w-48 sm:w-64 h-1.5 rounded-full bg-slate-800 overflow-hidden relative border border-slate-700/50">
-                  <div className="absolute inset-y-0 left-0 w-2/3 bg-gradient-to-r from-red-600 via-amber-400 to-red-600 rounded-full animate-beam-slide" />
-                </div>
-                <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium tracking-wide">
-                  Loading high-resolution specifications...
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* In the rare event of an explicit network failure */}
-        {hasError && (
-          <div className="w-full aspect-[1/1.4] sm:aspect-[1.4/1] min-h-[360px] sm:min-h-[440px] bg-slate-900/95 flex flex-col items-center justify-center text-center p-6 sm:p-10 select-none border border-slate-800">
-            <div className="w-14 h-14 rounded-2xl bg-slate-800/90 border border-slate-700/60 flex items-center justify-center text-slate-400 mb-4 shadow-lg shadow-black/20">
-              <ImageOff className="w-7 h-7 text-slate-400 stroke-[1.75]" />
-            </div>
-
-            <h3 className="text-base sm:text-lg font-bold text-slate-100 tracking-tight">
-              Page loading interrupted
-            </h3>
-
-            <p className="text-xs sm:text-sm text-slate-400 max-w-xs sm:max-w-sm mt-1.5 leading-relaxed">
-              Unable to complete image stream for Page {page.pageNumber || index + 1}. Tap to retry.
-            </p>
-
-            <button
-              onClick={() => {
-                setHasError(false);
-                setImageLoaded(false);
-                if (imgUrl) preloadCatalogueImage(imgUrl);
-              }}
-              className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-colors shadow-md active:scale-95"
-            >
-              Retry Loading
-            </button>
-          </div>
-        )}
-
-        <canvas
-          ref={canvasRef}
-          className={`w-full h-auto block select-none pointer-events-none rounded-xl transition-opacity duration-300 ${
-            imageLoaded ? 'opacity-100' : 'opacity-0 absolute inset-0 pointer-events-none'
+      {/* 3. Render Canvas or Fallback */}
+      {hasCustomImage && !hasError ? (
+        <div
+          className={`w-full relative overflow-hidden flex items-center justify-center transition-opacity duration-75 ${
+            isBlackout ? 'opacity-0 bg-slate-950' : 'opacity-100 bg-white'
           }`}
-          onContextMenu={(e) => e.preventDefault()}
-        />
-      </div>
+          style={{ minHeight: '320px' }}
+        >
+          <canvas
+            ref={canvasRef}
+            className="w-full h-auto block select-none pointer-events-none rounded-xl"
+            onContextMenu={(e) => e.preventDefault()}
+          />
+        </div>
+      ) : (
+        /* Clean Default Fallback when no image is uploaded */
+        <div className="w-full p-6 sm:p-10 text-slate-900 flex flex-col items-center justify-center text-center min-h-[380px] sm:min-h-[460px] bg-gradient-to-b from-white via-slate-50 to-slate-100 select-none">
+          <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mb-2">
+            {brandName}
+          </div>
+
+          <div className="w-12 h-1 bg-[#E0183D] rounded-full my-3" />
+
+          <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 mt-1 mb-2">
+            {page.title || `Product Catalogue — Page ${index + 1}`}
+          </h3>
+
+          {page.subtitle && (
+            <p className="text-xs sm:text-sm font-semibold text-[#E0183D] mb-2">
+              {page.subtitle}
+            </p>
+          )}
+
+          {page.description && (
+            <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto leading-relaxed mb-4">
+              {page.description}
+            </p>
+          )}
+
+          <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-200/80 text-[11px] font-bold text-slate-600">
+            <ImageIcon className="w-3.5 h-3.5 text-slate-500" />
+            <span>Upload original A4 Image from Admin Panel</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

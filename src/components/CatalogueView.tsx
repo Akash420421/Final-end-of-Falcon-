@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { FaWhatsapp } from 'react-icons/fa6';
-import { ShieldCheck, ImageOff } from 'lucide-react';
 import { useFalconStore } from '../context/StoreContext';
 import { CataloguePage } from '../types';
-import { ProtectedCatalogueCanvas, preloadCatalogueImage } from './ProtectedCatalogueCanvas';
+import { ProtectedCatalogueCanvas } from './ProtectedCatalogueCanvas';
 
 interface CatalogueViewProps {
   onOpenWhatsApp?: (message?: string) => void;
@@ -12,22 +11,9 @@ interface CatalogueViewProps {
 export const CatalogueView: React.FC<CatalogueViewProps> = ({
   onOpenWhatsApp,
 }) => {
-  const { catalogueSettings, companyDetails, isCatalogueLoaded, initialSyncStatus } = useFalconStore();
+  const { catalogueSettings, companyDetails } = useFalconStore();
   const pages = catalogueSettings.pages || [];
-  const isDataLoading = initialSyncStatus === 'loading' || !isCatalogueLoaded;
   const [isBlackout, setIsBlackout] = useState(false);
-
-  // Background Preloader: Preload all catalogue pages immediately so any switch or return is instant (0ms)
-  useEffect(() => {
-    if (pages && pages.length > 0) {
-      pages.forEach((page: CataloguePage) => {
-        const url = page.imageUrl || page.image;
-        if (url) {
-          preloadCatalogueImage(url);
-        }
-      });
-    }
-  }, [pages]);
 
   // Anti-Screenshot, Anti-Print & Window Blur Protection Listener
   useEffect(() => {
@@ -209,30 +195,13 @@ export const CatalogueView: React.FC<CatalogueViewProps> = ({
                 showPageNumbers={catalogueSettings.showPageNumbers}
                 brandName={companyDetails.brandName || 'FALCON ELECTRICS'}
                 isBlackout={isBlackout}
-                isDataLoading={isDataLoading}
               />
             ))
-          ) : isDataLoading ? (
-            /* Loading state while catalogue data is being fetched */
-            <div className="w-full max-w-2xl aspect-[1/1.4] sm:aspect-[1.4/1] min-h-[360px] sm:min-h-[440px] skeleton-shimmer-dark rounded-xl sm:rounded-2xl border border-slate-800 flex flex-col items-center justify-center text-slate-500 gap-3 p-6 text-center shadow-2xl">
-              <ShieldCheck className="w-8 h-8 text-slate-600 animate-pulse" />
-              <p className="text-xs font-bold text-slate-400 tracking-wide">
-                Loading Protected Catalogue...
-              </p>
-            </div>
           ) : (
-            /* Confirmed loaded + no pages */
-            <div className="w-full max-w-2xl aspect-[1/1.4] sm:aspect-[1.4/1] min-h-[360px] sm:min-h-[440px] bg-slate-900/95 rounded-xl sm:rounded-2xl border border-slate-800 flex flex-col items-center justify-center text-center p-6 sm:p-10 select-none shadow-2xl">
-              <div className="w-14 h-14 rounded-2xl bg-slate-800/90 border border-slate-700/60 flex items-center justify-center text-slate-400 mb-4 shadow-lg shadow-black/20">
-                <ImageOff className="w-7 h-7 text-slate-400 stroke-[1.75]" />
-              </div>
-
-              <h3 className="text-base sm:text-lg font-bold text-slate-100 tracking-tight">
-                Image not available
-              </h3>
-
-              <p className="text-xs sm:text-sm text-slate-400 max-w-xs sm:max-w-sm mt-1.5 leading-relaxed">
-                No image has been uploaded for this page yet.
+            <div className="w-full bg-slate-900/60 rounded-2xl p-8 border border-slate-800 text-center text-slate-400">
+              <p className="text-sm font-semibold">No catalogue pages uploaded yet.</p>
+              <p className="text-xs text-slate-500 mt-1">
+                Please open the Admin Panel to upload your catalogue pages.
               </p>
             </div>
           )}

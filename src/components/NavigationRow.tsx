@@ -5,7 +5,7 @@ import { NavigationTab } from '../types';
 interface NavigationRowProps {
   activeTab: NavigationTab;
   onSelectTab: (tab: NavigationTab) => void;
-  onOpenProductsDropdown?: () => void;
+  onOpenProductsDropdown: () => void;
 }
 
 export const NavigationRow: React.FC<NavigationRowProps> = ({
@@ -32,7 +32,7 @@ export const NavigationRow: React.FC<NavigationRowProps> = ({
               href={tab.href}
               onClick={(e) => {
                 e.preventDefault();
-                if (tab.hasDropdown && onOpenProductsDropdown) {
+                if (tab.hasDropdown) {
                   onOpenProductsDropdown();
                 } else {
                   onSelectTab(tab.id);

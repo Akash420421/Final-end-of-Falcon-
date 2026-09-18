@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   Image as ImageIcon,
   Sparkles,
@@ -12,12 +12,6 @@ import {
   ChevronRight,
   Plus,
   Link as LinkIcon,
-  Smartphone,
-  Download,
-  Eye,
-  EyeOff,
-  Tag,
-  Loader2,
 } from 'lucide-react';
 import { CompanyDetails, HeroContent } from '../../../types';
 import { ProductVisual } from '../../ProductVisual';
@@ -70,50 +64,13 @@ export const LogosBrandingTab: React.FC<LogosBrandingTabProps> = ({
   const [editingHero, setEditingHero] = useState<HeroContent>(heroContent);
   const [editingCompany, setEditingCompany] = useState<CompanyDetails>(companyDetails);
 
-  const [isSavingHero, setIsSavingHero] = useState(false);
-  const [heroSaved, setHeroSaved] = useState(false);
-  const [isSavingTagline, setIsSavingTagline] = useState(false);
-  const [taglineSaved, setTaglineSaved] = useState(false);
-
-  useEffect(() => {
-    setEditingHero(heroContent);
-  }, [heroContent]);
-
-  useEffect(() => {
-    setEditingCompany(companyDetails);
-  }, [companyDetails]);
-
-  const handleSaveHero = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (isSavingHero) return;
-    setIsSavingHero(true);
+  const handleSaveHero = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
       await onUpdateHeroContent(editingHero);
-      setHeroSaved(true);
       onShowToast('Hero Banner settings saved successfully!');
-      setTimeout(() => setHeroSaved(false), 2500);
     } catch (err: any) {
       alert('Error saving hero content: ' + (err?.message || err));
-    } finally {
-      setIsSavingHero(false);
-    }
-  };
-
-  const handleSaveTagline = async () => {
-    if (isSavingTagline) return;
-    setIsSavingTagline(true);
-    try {
-      await onUpdateCompanyDetails({
-        ...editingCompany,
-        logoTagline: editingCompany.logoTagline || 'Switch to excellence',
-      });
-      setTaglineSaved(true);
-      onShowToast('Logo Tagline subtitle updated & saved!');
-      setTimeout(() => setTaglineSaved(false), 2500);
-    } catch (err: any) {
-      alert('Error saving tagline: ' + (err?.message || err));
-    } finally {
-      setIsSavingTagline(false);
     }
   };
 
@@ -458,39 +415,25 @@ export const LogosBrandingTab: React.FC<LogosBrandingTabProps> = ({
                       onChange={(e) =>
                         setEditingCompany({ ...editingCompany, logoTagline: e.target.value })
                       }
-                      onBlur={() => {
-                        if (editingCompany.logoTagline !== companyDetails.logoTagline) {
-                          handleSaveTagline();
-                        }
-                      }}
                       placeholder="e.g. Switch to excellence"
                       className="flex-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#E0183D]"
                     />
                     <button
                       type="button"
-                      onClick={handleSaveTagline}
-                      disabled={isSavingTagline}
-                      className={`w-full sm:w-auto text-xs font-bold px-4 py-2 rounded-xl transition shadow shrink-0 min-h-[38px] flex items-center justify-center gap-1.5 ${
-                        taglineSaved
-                          ? 'bg-emerald-700 text-white'
-                          : isSavingTagline
-                          ? 'bg-red-950 text-slate-300'
-                          : 'bg-[#E0183D] hover:bg-[#c01233] text-white'
-                      }`}
+                      onClick={async () => {
+                        try {
+                          await onUpdateCompanyDetails({
+                            ...editingCompany,
+                            logoTagline: editingCompany.logoTagline || 'Switch to excellence',
+                          });
+                          onShowToast('Logo Tagline subtitle updated & saved!');
+                        } catch (err: any) {
+                          alert('Error saving tagline: ' + (err?.message || err));
+                        }
+                      }}
+                      className="w-full sm:w-auto bg-[#E0183D] hover:bg-[#c01233] text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow shrink-0 min-h-[38px]"
                     >
-                      {isSavingTagline ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>Saving...</span>
-                        </>
-                      ) : taglineSaved ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-300" />
-                          <span>✓ Saved!</span>
-                        </>
-                      ) : (
-                        <span>Save Tagline</span>
-                      )}
+                      Save Tagline
                     </button>
                   </div>
                   <p className="text-[10px] text-slate-400 mt-1">
@@ -529,52 +472,6 @@ export const LogosBrandingTab: React.FC<LogosBrandingTabProps> = ({
                   >
                     {editingCompany.hideLogoText ? 'Text: Hidden (Image Only)' : 'Text: Visible (Default)'}
                   </button>
-                </div>
-
-                {/* 3-Line Menu Mobile App Install Button Toggle */}
-                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                  <div>
-                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                      <Smartphone className="w-3.5 h-3.5 text-[#E0183D]" />
-                      3-Line Menu Mobile App Install Button
-                    </span>
-                    <span className="text-[10px] text-slate-400 block">
-                      Show or hide the red &quot;Install Falcon App&quot; button inside the mobile drawer menu.
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <div
-                      className={`hidden sm:flex px-2.5 py-1 rounded-lg text-[10px] font-bold text-white items-center gap-1 shadow-sm ${
-                        editingCompany.showInstallAppButton !== false
-                          ? 'bg-[#E0183D]'
-                          : 'bg-slate-800 opacity-40 line-through'
-                      }`}
-                    >
-                      <Download className="w-3 h-3" />
-                      Install Falcon App
-                    </div>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const nextVal = editingCompany.showInstallAppButton === false;
-                        const updated = { ...editingCompany, showInstallAppButton: nextVal };
-                        setEditingCompany(updated);
-                        try {
-                          await onUpdateCompanyDetails(updated);
-                          onShowToast(nextVal ? 'Mobile App Install button shown to users!' : 'Mobile App Install button hidden from users!');
-                        } catch (err: any) {
-                          alert('Error updating install button visibility: ' + (err?.message || err));
-                        }
-                      }}
-                      className={`px-3 py-2 rounded-xl font-bold text-xs transition border min-h-[38px] ${
-                        editingCompany.showInstallAppButton !== false
-                          ? 'bg-emerald-950/80 text-emerald-300 border-emerald-600'
-                          : 'bg-slate-900 text-slate-400 border-slate-700'
-                      }`}
-                    >
-                      {editingCompany.showInstallAppButton !== false ? 'Install Button: Visible' : 'Install Button: Hidden'}
-                    </button>
-                  </div>
                 </div>
               </div>
             </div>
@@ -840,80 +737,6 @@ export const LogosBrandingTab: React.FC<LogosBrandingTabProps> = ({
           </div>
         </div>
 
-        {/* Hero Top Accent Badge Settings (e.g. DIRECT FACTORY MANUFACTURER) */}
-        <div className="bg-slate-900/90 p-4 rounded-xl border border-slate-800 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-800">
-            <div>
-              <div className="flex items-center gap-2">
-                <Tag className="w-4 h-4 text-[#E0183D]" />
-                <span className="text-xs font-black text-white">Top Accent Badge (e.g. DIRECT FACTORY MANUFACTURER)</span>
-              </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                The small red highlighted label shown right above the Hero Headline on the homepage.
-              </p>
-            </div>
-
-            {/* Show / Hide Toggle Button with Instant Auto-Save */}
-            <button
-              type="button"
-              onClick={async () => {
-                const currentShow = editingHero.showBadge !== false;
-                const nextVal = !currentShow;
-                const nextHero = { ...editingHero, showBadge: nextVal };
-                setEditingHero(nextHero);
-                try {
-                  await onUpdateHeroContent(nextHero);
-                  onShowToast(nextVal ? 'Hero Top Badge enabled & saved!' : 'Hero Top Badge hidden & saved!');
-                } catch (err: any) {
-                  alert('Error updating badge visibility: ' + (err?.message || err));
-                }
-              }}
-              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition border flex items-center justify-center gap-1.5 self-start sm:self-auto min-h-[36px] ${
-                editingHero.showBadge !== false
-                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60 shadow-sm'
-                  : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
-              }`}
-            >
-              {editingHero.showBadge !== false ? (
-                <>
-                  <Eye className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Badge Visible (ON)</span>
-                </>
-              ) : (
-                <>
-                  <EyeOff className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Badge Hidden (OFF)</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {editingHero.showBadge !== false && (
-            <div className="space-y-2 pt-1">
-              <div className="flex items-center justify-between">
-                <label className="text-[10px] font-bold uppercase text-slate-400">Badge Text</label>
-                {editingHero.badge?.trim() && (
-                  <span className="text-[10px] font-black uppercase text-[#E0183D] bg-red-950/60 px-2.5 py-0.5 rounded border border-red-800/40">
-                    Live Preview: {editingHero.badge.trim()}
-                  </span>
-                )}
-              </div>
-              <input
-                type="text"
-                value={editingHero.badge !== undefined ? editingHero.badge : 'DIRECT FACTORY MANUFACTURER'}
-                onChange={(e) => setEditingHero({ ...editingHero, badge: e.target.value })}
-                onBlur={async () => {
-                  if (editingHero.badge !== heroContent.badge) {
-                    await handleSaveHero();
-                  }
-                }}
-                placeholder="e.g. DIRECT FACTORY MANUFACTURER or 100% GENUINE"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#E0183D]"
-              />
-            </div>
-          )}
-        </div>
-
         {/* Hero Headlines & Text */}
         <div className="grid grid-cols-1 gap-3 pt-2">
           <div className="space-y-1">
@@ -922,11 +745,6 @@ export const LogosBrandingTab: React.FC<LogosBrandingTabProps> = ({
               type="text"
               value={editingHero.headline}
               onChange={(e) => setEditingHero({ ...editingHero, headline: e.target.value })}
-              onBlur={async () => {
-                if (editingHero.headline !== heroContent.headline) {
-                  await handleSaveHero();
-                }
-              }}
               className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#E0183D]"
             />
           </div>
@@ -937,11 +755,6 @@ export const LogosBrandingTab: React.FC<LogosBrandingTabProps> = ({
               rows={2}
               value={editingHero.subtitle}
               onChange={(e) => setEditingHero({ ...editingHero, subtitle: e.target.value })}
-              onBlur={async () => {
-                if (editingHero.subtitle !== heroContent.subtitle) {
-                  await handleSaveHero();
-                }
-              }}
               className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#E0183D]"
             />
           </div>
@@ -949,31 +762,10 @@ export const LogosBrandingTab: React.FC<LogosBrandingTabProps> = ({
 
         <button
           type="submit"
-          disabled={isSavingHero}
-          className={`font-bold text-xs py-2.5 px-4 rounded-xl flex items-center gap-2 shadow transition min-h-[40px] ${
-            heroSaved
-              ? 'bg-emerald-700 text-white'
-              : isSavingHero
-              ? 'bg-red-950 text-slate-300'
-              : 'bg-[#E0183D] hover:bg-[#c01233] text-white'
-          }`}
+          className="bg-[#E0183D] hover:bg-[#c01233] text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center gap-2 shadow transition min-h-[40px]"
         >
-          {isSavingHero ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Saving to Database...</span>
-            </>
-          ) : heroSaved ? (
-            <>
-              <Check className="w-4 h-4 text-emerald-300" />
-              <span>✓ Hero Settings Saved!</span>
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4" />
-              <span>Save Hero Banner Settings</span>
-            </>
-          )}
+          <Save className="w-4 h-4" />
+          <span>Save Hero Banner Settings</span>
         </button>
       </form>
     </div>

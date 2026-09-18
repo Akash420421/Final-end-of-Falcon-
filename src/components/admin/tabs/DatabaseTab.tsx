@@ -125,7 +125,7 @@ export const DatabaseTab: React.FC<DatabaseTabProps> = ({
       await onSyncAllToCloud();
       setDiagnosticResult({
         status: 'success',
-        details: 'All tables (store_settings, categories, products, catalogue_pages) are synchronized and active!',
+        details: 'All tables (store_settings, categories, products, quotes, catalogue_pages) are synchronized and active!',
       });
       onShowToast('Database connection diagnostic passed!');
     } catch (err: any) {
@@ -186,19 +186,31 @@ CREATE TABLE IF NOT EXISTS public.catalogue_pages (
   created_at timestamptz DEFAULT now()
 );
 
--- Optional: Drop deprecated quotes table if present (leads are received directly via WhatsApp)
-DROP TABLE IF EXISTS public.quotes CASCADE;
+CREATE TABLE IF NOT EXISTS public.quotes (
+  id text PRIMARY KEY,
+  name text NOT NULL,
+  phone text NOT NULL,
+  email text,
+  quantity text,
+  notes text,
+  productName text,
+  productId text,
+  status text DEFAULT 'Pending',
+  created_at timestamptz DEFAULT now()
+);
 
 -- Enable RLS and public access
 ALTER TABLE public.store_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.catalogue_pages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.quotes ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Public Read Access" ON public.store_settings FOR ALL USING (true);
 CREATE POLICY "Public Read Access" ON public.categories FOR ALL USING (true);
 CREATE POLICY "Public Read Access" ON public.products FOR ALL USING (true);
-CREATE POLICY "Public Read Access" ON public.catalogue_pages FOR ALL USING (true);`;
+CREATE POLICY "Public Read Access" ON public.catalogue_pages FOR ALL USING (true);
+CREATE POLICY "Public Read Access" ON public.quotes FOR ALL USING (true);`;
 
   const displayLogs = simulationProgress.liveLogs.length > 0 
     ? simulationProgress.liveLogs 

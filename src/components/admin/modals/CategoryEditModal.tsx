@@ -78,10 +78,7 @@ export const CategoryEditModal: React.FC<CategoryEditModalProps> = ({
     }
     setIsSaving(true);
     try {
-      await Promise.race([
-        onSave(formData),
-        new Promise((resolve) => setTimeout(resolve, 2500)),
-      ]);
+      await onSave(formData);
       onShowToast(category ? 'Category updated!' : 'New category created!');
       onClose();
     } catch (err: any) {

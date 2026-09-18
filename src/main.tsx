@@ -65,26 +65,9 @@ if (typeof document !== 'undefined' && typeof window !== 'undefined') {
     }
   }, { passive: false });
 
-  // Block double-tap to zoom on plain background, while safeguarding interactive clicks & admin triggers
+  // Block double-tap to zoom
   let lastTouchEndTime = 0;
   document.addEventListener('touchend', (e: TouchEvent) => {
-    const target = e.target as HTMLElement | null;
-    // Never cancel taps on buttons, links, inputs, or admin triggers
-    if (target && (
-      target.closest('[data-admin-trigger]') ||
-      target.closest('button') ||
-      target.closest('a') ||
-      target.closest('input') ||
-      target.closest('textarea') ||
-      target.closest('select') ||
-      target.closest('[role="button"]') ||
-      target.closest('.cursor-pointer')
-    )) {
-      lastTouchEndTime = Date.now();
-      initialDistance = 0;
-      return;
-    }
-
     const currentTime = Date.now();
     if (currentTime - lastTouchEndTime <= 300) {
       e.preventDefault();

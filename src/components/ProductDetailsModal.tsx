@@ -1,46 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Star, Phone } from 'lucide-react';
+import { X, Star } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa6';
 import { Product } from '../types';
 import { ProductVisual } from './ProductVisual';
-import { useFalconStore } from '../context/StoreContext';
 
 interface ProductDetailsModalProps {
   product: Product | null;
   onClose: () => void;
   onRequestQuote?: (product: Product) => void;
   onOpenWhatsApp: (productOrName: Product | string) => void;
-  onOpenPhoneModal?: () => void;
 }
 
 export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   product,
   onClose,
   onOpenWhatsApp,
-  onOpenPhoneModal,
 }) => {
-  const { companyDetails } = useFalconStore();
   const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
-
-  const rawPhoneNumber = companyDetails?.phone || '+91 97175 49515';
-  const cleanPhoneDial = String(rawPhoneNumber).replace(/[^0-9+]/g, '');
-
-  // Lock background body scroll when modal is open to prevent background scrolling/bleeding
-  useEffect(() => {
-    if (!product) return;
-
-    const originalOverflow = document.body.style.overflow;
-    const originalTouchAction = document.body.style.touchAction;
-
-    document.body.style.overflow = 'hidden';
-    document.body.style.touchAction = 'none';
-
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      document.body.style.touchAction = originalTouchAction;
-    };
-  }, [product]);
 
   useEffect(() => {
     setSelectedImageIndex(0);
@@ -55,30 +32,26 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   return (
     <AnimatePresence>
       {product && (
-        <div 
-          className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-0 lg:p-4 touch-none" 
-          aria-modal="true" 
-          role="dialog"
-        >
-          {/* Backdrop: solid dark overlay with blur that completely blocks background bleed */}
+        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-0 lg:p-4" aria-modal="true" role="dialog">
+          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
             style={{ willChange: 'opacity', transform: 'translate3d(0, 0, 0)' }}
-            className="fixed inset-0 bg-slate-950/80 backdrop-blur-md"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
             onClick={onClose}
           />
 
           {/* Modal Content Sheet */}
           <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.98 }}
+            initial={{ opacity: 0, y: 40, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 40, scale: 0.98 }}
+            exit={{ opacity: 0, y: 30, scale: 0.98 }}
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             style={{ willChange: 'transform, opacity', transform: 'translate3d(0, 0, 0)' }}
-            className="bg-white rounded-t-3xl lg:rounded-3xl w-full max-w-md lg:max-w-2xl max-h-[92vh] lg:max-h-[85vh] overflow-y-auto p-4 sm:p-5 lg:p-8 pb-8 lg:pb-8 shadow-2xl relative z-10 overscroll-contain touch-auto border-t lg:border border-slate-100"
+            className="bg-white rounded-t-3xl lg:rounded-3xl w-full max-w-md lg:max-w-2xl max-h-[90vh] lg:max-h-[85vh] overflow-y-auto p-4 lg:p-8 shadow-2xl relative z-10"
           >
             {/* Top Handle on Mobile */}
             <div className="w-12 h-1.5 bg-slate-300 rounded-full mx-auto mb-3 lg:hidden"></div>
@@ -217,43 +190,19 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
               </div>
             )}
 
-            {/* Action CTA: WhatsApp Enquiry & Direct Call Now */}
-            <div className="pt-3 lg:pt-4 border-t border-slate-200 space-y-2.5">
+            {/* Action CTA */}
+            <div className="pt-2 lg:pt-4 border-t border-slate-200">
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 onClick={() => {
                   onClose();
                   onOpenWhatsApp(product);
                 }}
-                className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-[13px] lg:text-[15px] py-3 lg:py-3.5 rounded-xl lg:rounded-2xl flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all"
+                className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-[13px] lg:text-[15px] py-3 lg:py-3.5 rounded-xl lg:rounded-2xl flex items-center justify-center gap-2 shadow-md transition-colors"
               >
                 <FaWhatsapp size={18} className="lg:scale-110" />
                 <span>WhatsApp Enquiry</span>
               </motion.button>
-
-              {/* Direct Call Button */}
-              {onOpenPhoneModal ? (
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    onClose();
-                    onOpenPhoneModal();
-                  }}
-                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-[13px] lg:text-[15px] py-3 lg:py-3.5 rounded-xl lg:rounded-2xl flex items-center justify-center gap-2 shadow-sm hover:shadow transition-all"
-                >
-                  <Phone className="w-4 h-4 text-red-500 fill-red-500/20" />
-                  <span>Call Us Directly ({rawPhoneNumber})</span>
-                </motion.button>
-              ) : (
-                <motion.a
-                  whileTap={{ scale: 0.98 }}
-                  href={`tel:${cleanPhoneDial}`}
-                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-[13px] lg:text-[15px] py-3 lg:py-3.5 rounded-xl lg:rounded-2xl flex items-center justify-center gap-2 shadow-sm hover:shadow transition-all"
-                >
-                  <Phone className="w-4 h-4 text-red-500 fill-red-500/20" />
-                  <span>Call Us Directly ({rawPhoneNumber})</span>
-                </motion.a>
-              )}
             </div>
 
           </motion.div>

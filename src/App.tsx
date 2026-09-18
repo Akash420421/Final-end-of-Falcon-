@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   BrowserRouter as Router,
   Routes,
@@ -29,21 +29,10 @@ import { ProductDetailsModal } from './components/ProductDetailsModal';
 import { MobileMenuDrawer } from './components/MobileMenuDrawer';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { AdminPanelModal } from './components/AdminPanelModal';
-import {
-  HomeContentSkeleton,
-  FullPageSkeletonLoader,
-  AboutPageSkeleton,
-  ProductsPageSkeleton,
-  WhyUsPageSkeleton,
-  ContactPageSkeleton,
-  CataloguePageSkeleton,
-  CategoryCarouselSkeleton,
-  ProductCardSkeleton,
-} from './components/SkeletonLoaders';
+import { FullPageSkeletonLoader } from './components/SkeletonLoaders';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CatalogueView } from './components/CatalogueView';
 import { SEOHead } from './components/SEOHead';
-import { preloadCatalogueImage } from './components/ProtectedCatalogueCanvas';
 import { initAutomatedHeartbeat } from './services/heartbeatService';
 import { shareProductOnWhatsApp, openWhatsAppChat } from './utils/whatsappHelper';
 import { Phone, X } from 'lucide-react';
@@ -66,24 +55,11 @@ function MainContent() {
     retrySupabaseConnection,
     products,
     categories,
-    catalogueSettings,
     companyDetails,
     isAdminLoggedIn,
     firebaseError,
     retryFirebaseConnection,
   } = useFalconStore();
-
-  // Background Preload: Pre-cache catalogue images globally as soon as data arrives
-  useEffect(() => {
-    if (catalogueSettings?.pages && catalogueSettings.pages.length > 0) {
-      catalogueSettings.pages.forEach((page) => {
-        const url = page.imageUrl || page.image;
-        if (url) {
-          preloadCatalogueImage(url);
-        }
-      });
-    }
-  }, [catalogueSettings?.pages]);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -132,17 +108,15 @@ function MainContent() {
 
   // Filter products based on search and category
   const filteredProducts = useMemo(() => {
-    const trimmedQuery = searchQuery.trim().toLowerCase();
-    const queryTokens = trimmedQuery ? trimmedQuery.split(/\s+/).filter(Boolean) : [];
-
     return products.filter((prod) => {
       const matchesCategory = !selectedCategoryId || prod.category === selectedCategoryId;
-      if (!matchesCategory) return false;
-      if (queryTokens.length === 0) return true;
-
-      const searchableText = `${prod.name} ${prod.description || ''} ${prod.categoryName || ''} ${prod.subCategory || ''} ${prod.amps || ''} ${prod.material || ''} ${prod.badge || ''}`.toLowerCase();
-      // Match all search tokens for accurate multi-word queries
-      return queryTokens.every((token) => searchableText.includes(token));
+      const matchesSearch =
+        !searchQuery ||
+        prod.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        prod.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        prod.categoryName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (prod.amps && prod.amps.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchesCategory && matchesSearch;
     });
   }, [products, selectedCategoryId, searchQuery]);
 
@@ -192,7 +166,7 @@ function MainContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSelectCategory = useCallback((catId: string | null) => {
+  const handleSelectCategory = (catId: string | null) => {
     const targetPath = catId ? `/category/${catId}` : '/products';
 
     // 1. De-duplication: If clicking the category already active, don't create duplicate history item
@@ -214,31 +188,13 @@ function MainContent() {
       navigate(targetPath);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [location.pathname, navigate]);
+  };
 
-  const handleSelectProduct = useCallback((product: Product) => {
+  const handleSelectProduct = (product: Product) => {
     const targetPath = `/product/${product.id}`;
     if (location.pathname === targetPath) return;
     navigate(targetPath);
-  }, [location.pathname, navigate]);
-
-  const handleViewAllProducts = useCallback(() => {
-    setSearchQuery('');
-    handleSelectCategory(null);
-  }, [handleSelectCategory]);
-
-  const handleHeroViewProducts = useCallback(() => {
-    handleSelectCategory(null);
-  }, [handleSelectCategory]);
-
-  const handleHeroViewCatalogue = useCallback(() => {
-    if (location.pathname === '/catalogue') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      navigate('/catalogue');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  }, [location.pathname, navigate]);
+  };
 
   const handleCloseProductModal = () => {
     if (location.pathname.startsWith('/product/')) {
@@ -251,7 +207,7 @@ function MainContent() {
   };
 
   // WhatsApp Handler
-  const handleOpenWhatsApp = useCallback((productOrName?: Product | string | null) => {
+  const handleOpenWhatsApp = (productOrName?: Product | string | null) => {
     const rawPhone = companyDetails?.whatsapp || companyDetails?.phone || '+91 97175 49515';
     
     if (productOrName && typeof productOrName === 'object') {
@@ -273,15 +229,20 @@ function MainContent() {
     const brand = companyDetails?.brandName || 'Falcon Electrics';
     const messageText = `Hello ${company} (${brand}), I am interested in your electrical products. Please share your latest catalogue and wholesale price list.`;
     openWhatsAppChat(rawPhone, messageText);
-  }, [companyDetails, products]);
+  };
 
   // Phone Call Handler
   const handleOpenPhone = () => {
     setIsPhoneModalOpen(true);
   };
 
-  // Coordinated Error Screen with retry and cache fallback ONLY if device is genuinely offline with no cache
-  if (initialSyncStatus === 'error' && !hasOfflineCache) {
+  // Full Page Skeleton Loader while critical database data is fetching
+  if (initialSyncStatus === 'loading' || isLoading) {
+    return <FullPageSkeletonLoader />;
+  }
+
+  // Coordinated Error Screen with retry and cache fallback if initial sync failed
+  if (initialSyncStatus === 'error') {
     return (
       <FullPageSkeletonLoader
         error={initialSyncError}
@@ -396,13 +357,20 @@ function MainContent() {
       <main className={`flex-1 w-full ${activeTab === 'CATALOGUE' ? 'pb-0 bg-slate-950' : 'pb-10'}`}>
         {activeTab === 'HOME' && (
           <>
-            {/* Hero Section — ALWAYS INSTANT 0ms RENDER, ZERO SKELETON, ZERO FLICKER */}
+            {/* Hero Section */}
             <HeroSection
-              onViewProducts={handleHeroViewProducts}
-              onViewCatalogue={handleHeroViewCatalogue}
+              onViewProducts={() => handleSelectCategory(null)}
+              onViewCatalogue={() => {
+                if (location.pathname === '/catalogue') {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                  navigate('/catalogue');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }}
             />
 
-            {/* Search Bar — ALWAYS INSTANT */}
+            {/* Search Bar */}
             <SearchBar
               searchQuery={searchQuery}
               onSearchChange={(q) => setSearchQuery(q)}
@@ -426,43 +394,28 @@ function MainContent() {
 
             {/* Browse Categories */}
             <div id="categories-section">
-              {categories.length === 0 && initialSyncStatus === 'loading' ? (
-                <CategoryCarouselSkeleton />
-              ) : (
-                <CategoryCarousel
-                  selectedCategory={selectedCategoryId}
-                  onSelectCategory={handleSelectCategory}
-                />
-              )}
+              <CategoryCarousel
+                selectedCategory={selectedCategoryId}
+                onSelectCategory={handleSelectCategory}
+              />
             </div>
 
-            {/* Trust & Benefits Strip — ALWAYS INSTANT */}
+            {/* Trust & Benefits Strip */}
             <TrustBenefitsStrip />
 
             {/* Featured Products Carousel */}
             <div id="featured-products">
-              {products.length === 0 && initialSyncStatus === 'loading' ? (
-                <div className="px-4 max-w-md lg:max-w-7xl mx-auto py-6 space-y-4">
-                  <div className="space-y-1.5">
-                    <div className="w-28 h-3 rounded skeleton-shimmer" />
-                    <div className="w-48 h-6 rounded skeleton-shimmer" />
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <ProductCardSkeleton key={i} />
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <FeaturedProducts
-                  products={filteredProducts}
-                  selectedCategoryName={selectedCategoryObj?.title}
-                  searchQuery={searchQuery}
-                  onSelectProduct={handleSelectProduct}
-                  onOpenWhatsApp={handleOpenWhatsApp}
-                  onViewAllProducts={handleViewAllProducts}
-                />
-              )}
+              <FeaturedProducts
+                products={filteredProducts}
+                selectedCategoryName={selectedCategoryObj?.title}
+                searchQuery={searchQuery}
+                onSelectProduct={handleSelectProduct}
+                onOpenWhatsApp={(prod) => handleOpenWhatsApp(prod)}
+                onViewAllProducts={() => {
+                  setSearchQuery('');
+                  handleSelectCategory(null);
+                }}
+              />
             </div>
 
             {/* Bulk / Dealer Orders CTA */}
@@ -492,19 +445,15 @@ function MainContent() {
         )}
 
         {activeTab === 'PRODUCTS' && (
-          products.length === 0 && initialSyncStatus === 'loading' ? (
-            <ProductsPageSkeleton />
-          ) : (
-            <CategoryProductsView
-              products={filteredProducts}
-              selectedCategoryId={selectedCategoryId}
-              onSelectCategory={handleSelectCategory}
-              searchQuery={searchQuery}
-              onSearchChange={(q) => setSearchQuery(q)}
-              onSelectProduct={handleSelectProduct}
-              onOpenWhatsApp={(prod) => handleOpenWhatsApp(prod)}
-            />
-          )
+          <CategoryProductsView
+            products={filteredProducts}
+            selectedCategoryId={selectedCategoryId}
+            onSelectCategory={handleSelectCategory}
+            searchQuery={searchQuery}
+            onSearchChange={(q) => setSearchQuery(q)}
+            onSelectProduct={handleSelectProduct}
+            onOpenWhatsApp={(prod) => handleOpenWhatsApp(prod)}
+          />
         )}
 
         {activeTab === 'CATALOGUE' && (
@@ -552,7 +501,6 @@ function MainContent() {
         product={selectedProduct}
         onClose={handleCloseProductModal}
         onOpenWhatsApp={(prod) => handleOpenWhatsApp(prod)}
-        onOpenPhoneModal={handleOpenPhone}
       />
 
       {/* Mobile Side Menu Drawer */}

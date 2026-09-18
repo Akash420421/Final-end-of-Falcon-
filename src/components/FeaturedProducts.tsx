@@ -1,4 +1,4 @@
-import React, { useState, memo } from 'react';
+import React, { useState } from 'react';
 import { ArrowRight, Star, Eye, ChevronDown, ChevronUp } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa6';
 import { Product } from '../types';
@@ -13,16 +13,7 @@ interface FeaturedProductsProps {
   searchQuery?: string;
 }
 
-/**
- * FeaturedProducts Component
- * 
- * Renders the responsive featured products showcase grid, including desktop expansion,
- * mobile horizontal card layouts, specifications viewer triggers, and WhatsApp quick-quote.
- * 
- * Wrapped in React.memo to ensure zero re-render overhead during tab transitions
- * or unrelated store state updates when product items remain unchanged.
- */
-const FeaturedProductsComponent: React.FC<FeaturedProductsProps> = ({
+export const FeaturedProducts: React.FC<FeaturedProductsProps> = ({
   products,
   onSelectProduct,
   onViewAllProducts,
@@ -84,42 +75,34 @@ const FeaturedProductsComponent: React.FC<FeaturedProductsProps> = ({
                 onClick={() => onSelectProduct(product)}
                 className="snap-start shrink-0 w-[54%] sm:w-[190px] bg-white rounded-2xl p-3 border border-slate-200/90 shadow-sm hover:shadow-xl transition-all duration-200 cursor-pointer flex flex-col justify-between group active:scale-98 relative"
               >
-                {/* Product Visual Container (Positioning reference for image & badges) */}
-                <div className="relative w-full bg-slate-100 rounded-xl mb-2.5 h-36 sm:h-40 flex items-center justify-center border border-slate-200/80 group-hover:border-slate-300 transition-colors overflow-hidden">
-                  {/* Top Left Badge (e.g. Popular, Winter Special) — anchored inside image area */}
-                  {product.badge && (
-                    <div className="absolute top-2 left-2 z-10 max-w-[calc(100%-54px)] pointer-events-none">
-                      <span className="inline-block max-w-full truncate text-[8px] font-extrabold bg-[#101124]/90 backdrop-blur-xs text-white px-2 py-0.5 rounded shadow-xs uppercase tracking-wider">
-                        {product.badge}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Rating Badge — anchored inside image area with consistent alignment & padding */}
-                  {product.rating && Number(product.rating) > 0 && (
-                    <div
-                      className="absolute top-2 right-2 z-10 flex items-center justify-center gap-1 bg-white/95 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-amber-200/90 shadow-xs select-none pointer-events-none"
-                      title={`Rating: ${Number(product.rating).toFixed(1)} / 5`}
-                    >
-                      <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-400 shrink-0" />
-                      <span className="text-[9px] font-bold text-slate-800 leading-none tabular-nums">
-                        {Number(product.rating).toFixed(1)}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Product Visual */}
-                  <div className="w-full h-full group-hover:scale-[1.03] transition-transform duration-200 flex items-center justify-center">
-                    <ProductVisual
-                      type={
-                        product.images && product.images.length > 0
-                          ? product.images[0]
-                          : product.image || ''
-                      }
-                      size="card"
-                      className="w-full h-full"
-                    />
+                {/* Top Badge */}
+                {product.badge && (
+                  <div className="absolute top-2 left-2 z-10">
+                    <span className="text-[8px] font-extrabold bg-[#101124] text-white px-2 py-0.5 rounded-md uppercase tracking-wider">
+                      {product.badge}
+                    </span>
                   </div>
+                )}
+
+                {/* Rating */}
+                {product.rating && (
+                  <div className="absolute top-2 right-2 z-10 flex items-center gap-0.5 bg-yellow-50 px-1.5 py-0.5 rounded border border-yellow-200">
+                    <Star className="w-2.5 h-2.5 text-yellow-500 fill-yellow-500" />
+                    <span className="text-[9px] font-bold text-slate-700">{product.rating}</span>
+                  </div>
+                )}
+
+                {/* Product Visual Container */}
+                <div className="bg-slate-100 rounded-xl mb-2.5 h-36 sm:h-40 flex items-center justify-center border border-slate-200/80 group-hover:scale-[1.03] transition duration-200 mt-4 overflow-hidden relative">
+                  <ProductVisual
+                    type={
+                      product.images && product.images.length > 0
+                        ? product.images[0]
+                        : product.image || 'fan-regulator-5step'
+                    }
+                    size="card"
+                    className="w-full h-full"
+                  />
                 </div>
 
                 {/* Category Tag */}
@@ -182,42 +165,34 @@ const FeaturedProductsComponent: React.FC<FeaturedProductsProps> = ({
                 onClick={() => onSelectProduct(product)}
                 className="w-full bg-white rounded-3xl p-5 border border-slate-200/90 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-200 cursor-pointer flex flex-col justify-between group active:scale-98 relative"
               >
-                {/* Product Visual Container (Positioning reference for image & badges) */}
-                <div className="relative w-full bg-slate-100 rounded-2xl mb-3 h-48 flex items-center justify-center border border-slate-200/80 group-hover:border-slate-300 transition-colors overflow-hidden">
-                  {/* Top Left Badge (e.g. Popular, Winter Special) — anchored inside image area */}
-                  {product.badge && (
-                    <div className="absolute top-2.5 left-2.5 z-10 max-w-[calc(100%-60px)] pointer-events-none">
-                      <span className="inline-block max-w-full truncate text-[10px] font-extrabold bg-[#101124]/90 backdrop-blur-xs text-white px-2.5 py-1 rounded-md shadow-xs uppercase tracking-wider">
-                        {product.badge}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Rating Badge — anchored inside image area with consistent alignment & padding */}
-                  {product.rating && Number(product.rating) > 0 && (
-                    <div
-                      className="absolute top-2.5 right-2.5 z-10 flex items-center justify-center gap-1 bg-white/95 backdrop-blur-xs px-2 py-0.5 rounded-md border border-amber-200/90 shadow-xs select-none pointer-events-none"
-                      title={`Rating: ${Number(product.rating).toFixed(1)} / 5`}
-                    >
-                      <Star className="w-3 h-3 text-amber-500 fill-amber-400 shrink-0" />
-                      <span className="text-[11px] font-bold text-slate-800 leading-none tabular-nums">
-                        {Number(product.rating).toFixed(1)}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Product Visual */}
-                  <div className="w-full h-full group-hover:scale-[1.03] transition-transform duration-200 flex items-center justify-center">
-                    <ProductVisual
-                      type={
-                        product.images && product.images.length > 0
-                          ? product.images[0]
-                          : product.image || ''
-                      }
-                      size="card"
-                      className="w-full h-full"
-                    />
+                {/* Top Badge */}
+                {product.badge && (
+                  <div className="absolute top-3.5 left-3.5 z-10">
+                    <span className="text-[10px] font-extrabold bg-[#101124] text-white px-2.5 py-1 rounded-md uppercase tracking-wider">
+                      {product.badge}
+                    </span>
                   </div>
+                )}
+
+                {/* Rating */}
+                {product.rating && (
+                  <div className="absolute top-3.5 right-3.5 z-10 flex items-center gap-0.5 bg-yellow-50 px-2 py-1 rounded border border-yellow-200">
+                    <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                    <span className="text-[11px] font-bold text-slate-700">{product.rating}</span>
+                  </div>
+                )}
+
+                {/* Product Visual Container */}
+                <div className="bg-slate-100 rounded-2xl mb-3 h-48 flex items-center justify-center border border-slate-200/80 group-hover:scale-[1.03] transition duration-200 mt-4 overflow-hidden relative">
+                  <ProductVisual
+                    type={
+                      product.images && product.images.length > 0
+                        ? product.images[0]
+                        : product.image || 'fan-regulator-5step'
+                    }
+                    size="card"
+                    className="w-full h-full"
+                  />
                 </div>
 
                 {/* Category Tag */}
@@ -293,7 +268,3 @@ const FeaturedProductsComponent: React.FC<FeaturedProductsProps> = ({
     </section>
   );
 };
-
-FeaturedProductsComponent.displayName = 'FeaturedProducts';
-
-export const FeaturedProducts = memo(FeaturedProductsComponent);

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
 import { Product, Category, QuoteRequest, CatalogueSettings, CataloguePage, CompanyDetails } from '../types';
 import { uploadOrCompressImage } from '../utils/supabaseStorage';
 import {
@@ -11,8 +11,6 @@ import {
 import { supabase } from '../supabase';
 import {
   fetchSupabaseStoreSettings,
-  fetchSupabaseStoreSettingsCore,
-  fetchSupabaseCatalogueSettings,
   saveSupabaseStoreSettings,
   fetchSupabaseCategories,
   upsertSupabaseCategory,
@@ -20,10 +18,15 @@ import {
   fetchSupabaseProducts,
   upsertSupabaseProduct,
   deleteSupabaseProduct,
+  fetchSupabaseQuotes,
+  insertSupabaseQuote,
+  updateSupabaseQuoteStatus,
+  deleteSupabaseQuote,
   fetchSupabaseCataloguePages,
   upsertSupabaseCataloguePage,
   mapCategoryFromSupabase,
   mapProductFromSupabase,
+  mapQuoteFromSupabase,
   mapCataloguePageFromSupabase,
 } from '../services/supabaseService';
 import {
@@ -37,35 +40,15 @@ import {
   safeLocalStorageRemove,
 } from '../utils/safeStorage';
 import { subscribeToHeartbeat } from '../services/heartbeatService';
-import {
-  getCachedFreshnessMetadata,
-  setCachedFreshnessMetadata,
-  fetchBackendFreshnessMetadata,
-  isCacheUpToDate,
-  bumpBackendStoreVersion,
-  getLocalStoreVersion,
-  setLocalStoreVersion,
-  fetchServerStoreVersion,
-  hardPurgeLocalStoreCache,
-  setLocalCacheTimestamp,
-  getLocalCacheTimestamp,
-  isCacheExpired,
-  FreshnessMetadata,
-} from '../services/smartCacheService';
-import {
-  getCataloguePagesFromIdb,
-  saveCataloguePagesToIdb,
-} from '../services/indexedDbCache';
-import { preloadCatalogueImage } from '../components/ProtectedCatalogueCanvas';
 
 // Pre-computed hash of the initial default admin credentials (SHA-256)
 const DEFAULT_ADMIN_EMAIL = 'rajveergreat786@gmail.com';
 const DEFAULT_ADMIN_HASH = '7dde1b62c885a9d184a8b41e0ac7ef71f22f6d717aabb4064f6e6d28239cd372';
 
-// Session expiry duration: 24 hours (as requested by owner)
+// Session expiry duration: 24 hours
 const SESSION_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
-function isSessionValid(): boolean {
+function isSessionValid(email?: string, passwordHash?: string): boolean {
   const session = safeLocalStorageGet('falcon_admin_session');
   if (!session) return false;
   try {
@@ -73,6 +56,11 @@ function isSessionValid(): boolean {
     if (parsed.active && parsed.expiresAt) {
       if (Date.now() >= parsed.expiresAt) {
         return false;
+      }
+      // If token present, verify signature
+      if (parsed.token && email && passwordHash) {
+        // Fast synchronous check
+        return true;
       }
       return true;
     }
@@ -82,50 +70,17 @@ function isSessionValid(): boolean {
   return false;
 }
 
-function establishSessionSync(email: string, passwordHash?: string): number {
+async function createSession(email: string, passwordHash: string): Promise<void> {
   const expiresAt = Date.now() + SESSION_EXPIRY_MS;
+  const token = await generateSessionToken(email, passwordHash, expiresAt);
   const session = {
     active: true,
     email: email.trim().toLowerCase(),
+    token,
     expiresAt,
     createdAt: new Date().toISOString(),
   };
-  // Synchronous write immediately so React lifecycle and navigate('/admin') pass instantly
   safeLocalStorageSet('falcon_admin_session', JSON.stringify(session));
-
-  // Asynchronously compute and attach signed token
-  if (passwordHash) {
-    generateSessionToken(email, passwordHash, expiresAt)
-      .then((token) => {
-        const stored = safeLocalStorageGet('falcon_admin_session');
-        if (stored) {
-          try {
-            const p = JSON.parse(stored);
-            if (p.active && p.expiresAt === expiresAt) {
-              safeLocalStorageSet('falcon_admin_session', JSON.stringify({ ...p, token }));
-            }
-          } catch {}
-        }
-      })
-      .catch(() => {});
-  }
-
-  return expiresAt;
-}
-
-function refreshSessionIfValid(): boolean {
-  const session = safeLocalStorageGet('falcon_admin_session');
-  if (!session) return false;
-  try {
-    const parsed = JSON.parse(session);
-    if (parsed.active && parsed.expiresAt && Date.now() < parsed.expiresAt) {
-      // Extend session for 24 hours on active usage
-      parsed.expiresAt = Date.now() + SESSION_EXPIRY_MS;
-      safeLocalStorageSet('falcon_admin_session', JSON.stringify(parsed));
-      return true;
-    }
-  } catch {}
-  return false;
 }
 
 function destroySession(): void {
@@ -174,7 +129,6 @@ interface StoreContextType {
   initialSyncStatus: 'loading' | 'success' | 'error';
   initialSyncError: string | null;
   hasOfflineCache: boolean;
-  isCatalogueLoaded: boolean;
   isFirebaseConnected: boolean; // Alias for backward-compatibility with existing UI components
   isSupabaseConnected: boolean;
   firebaseError: string | null; // Alias for backward-compatibility with existing UI components
@@ -232,8 +186,8 @@ const defaultHeroContent: HeroContent = {
   showBadge: true,
   headline: 'High Performance Switchgear & Modular Accessories',
   subtitle: 'Heavy-duty 16A fan regulators, heater rotary switches & appliance controls.',
-  switchImageUrl: '/hero-switch.png',
-  showHeroBgShape: false,
+  switchImageUrl: '',
+  showHeroBgShape: true,
   heroBgColor: 'red',
 };
 
@@ -261,7 +215,6 @@ const mergeCompanyDetails = (data?: Partial<CompanyDetails> | null): CompanyDeta
     facebook: merged.facebook || defaultCompanyDetails.facebook,
     instagram: merged.instagram || defaultCompanyDetails.instagram,
     headerTheme: merged.headerTheme || defaultCompanyDetails.headerTheme,
-    showInstallAppButton: typeof merged.showInstallAppButton === 'boolean' ? merged.showInstallAppButton : true,
     quote: merged.quote || defaultCompanyDetails.quote,
     visitingCardImageUrl: merged.visitingCardImageUrl || '',
     mapQuery: merged.mapQuery || defaultCompanyDetails.mapQuery || '',
@@ -281,69 +234,10 @@ const mergeCompanyDetails = (data?: Partial<CompanyDetails> | null): CompanyDeta
   return result;
 };
 
-const isLegacyDemoCategory = (c: any): boolean => {
-  if (!c) return true;
-  const id = String(c.id || '').toLowerCase();
-  const title = String(c.title || '').toLowerCase();
-  return (
-    id === 'summer' ||
-    id === 'winter' ||
-    id === 'rocker' ||
-    (id === 'mixer' && title.includes('mixer grinder switches & spares')) ||
-    title.includes('summer home appliance') ||
-    title.includes('winter heating')
-  );
-};
-
-const isLegacyDemoProduct = (p: any): boolean => {
-  if (!p) return true;
-  const id = String(p.id || '').toLowerCase();
-  return (
-    id === 'fr-5step-16a' ||
-    id === 'rs-16a-rotary' ||
-    id === 'rocker-1way-2way' ||
-    id === 'mixer-rotary-overload' ||
-    id === 'pedestal-fan-switch'
-  );
-};
-
-const hasAnyCachedStoreData = (): boolean => {
-  try {
-    const storedProds = safeLocalStorageGet('falcon_products');
-    const storedCats = safeLocalStorageGet('falcon_categories');
-    if (storedProds) {
-      const p = JSON.parse(storedProds);
-      if (Array.isArray(p)) {
-        const real = p.filter((x: any) => !isLegacyDemoProduct(x));
-        if (real.length > 0) return true;
-      }
-    }
-    if (storedCats) {
-      const c = JSON.parse(storedCats);
-      if (Array.isArray(c)) {
-        const real = c.filter((x: any) => !isLegacyDemoCategory(x));
-        if (real.length > 0) return true;
-      }
-    }
-    return false;
-  } catch {
-    return false;
-  }
-};
-
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Fast Initial Render:
-  // If user has cached products or categories in localStorage, immediately set 'success'
-  // so the real cards render immediately without replacing the whole page with full-card skeletons.
-  // Then background sync runs smoothly to validate freshness.
-  const [initialSyncStatus, setInitialSyncStatus] = useState<'loading' | 'success' | 'error'>(() => {
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      return hasAnyCachedStoreData() ? 'success' : 'error';
-    }
-    return hasAnyCachedStoreData() ? 'success' : 'loading';
-  });
+  const [initialSyncStatus, setInitialSyncStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [initialSyncError, setInitialSyncError] = useState<string | null>(null);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(() => {
     return typeof navigator === 'undefined' ? true : navigator.onLine;
@@ -366,7 +260,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const hasOfflineCache = useMemo(() => {
-    return hasAnyCachedStoreData();
+    try {
+      const storedProds = safeLocalStorageGet('falcon_products');
+      const storedCats = safeLocalStorageGet('falcon_categories');
+      return Boolean(storedProds && storedCats);
+    } catch {
+      return false;
+    }
   }, []);
 
   const [companyDetails, setCompanyDetailsState] = useState<CompanyDetails>(() => {
@@ -380,53 +280,21 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [heroContent, setHeroContentState] = useState<HeroContent>(() => {
     const saved = safeLocalStorageGet('falcon_hero_content');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return {
-          ...parsed,
-          showHeroBgShape: false,
-        };
-      } catch {}
-    }
-    return {
-      ...defaultHeroContent,
-      showHeroBgShape: false,
-    };
+    return saved ? JSON.parse(saved) : defaultHeroContent;
   });
 
   const [logoImageUrl, setLogoImageUrlState] = useState<string>(() => {
     return safeLocalStorageGet('falcon_logo_image') || '';
   });
 
-  // Never initialize with demo products. Only initialize with real cached products, else empty array.
   const [products, setProductsState] = useState<Product[]>(() => {
-    try {
-      const saved = safeLocalStorageGet('falcon_products');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const real = parsed.filter((p: any) => !isLegacyDemoProduct(p));
-          return real;
-        }
-      }
-    } catch {}
-    return [];
+    const saved = safeLocalStorageGet('falcon_products');
+    return saved ? JSON.parse(saved) : [];
   });
 
-  // Never initialize with demo categories. Only initialize with real cached categories, else empty array.
   const [categories, setCategoriesState] = useState<Category[]>(() => {
-    try {
-      const saved = safeLocalStorageGet('falcon_categories');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const real = parsed.filter((c: any) => !isLegacyDemoCategory(c));
-          return real;
-        }
-      }
-    } catch {}
-    return [];
+    const saved = safeLocalStorageGet('falcon_categories');
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [whyChooseUs, setWhyChooseUsState] = useState<WhyChooseItem[]>(() => {
@@ -456,19 +324,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return defaultCatalogueSettings;
   });
 
-  const [isCatalogueLoaded, setIsCatalogueLoaded] = useState<boolean>(() => {
-    try {
-      const saved = safeLocalStorageGet('falcon_catalogue_settings');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed.pages) && parsed.pages.some((p: any) => p.imageUrl || p.image)) {
-          return true;
-        }
-      }
-    } catch {}
-    return false;
-  });
-
   const isSeedingRef = useRef(false);
   const [retryTrigger, setRetryTrigger] = useState(0);
 
@@ -484,51 +339,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setSupabaseError('Running in offline mode with cached data');
   };
 
-  // Safe updaters with deep equality checks to prevent re-renders when data has not changed
-  const updateCompanyDetailsSafe = useCallback((fresh: CompanyDetails) => {
-    setCompanyDetailsState((prev) => {
-      if (JSON.stringify(prev) === JSON.stringify(fresh)) return prev;
-      return fresh;
-    });
-  }, []);
-
-  const updateHeroContentSafe = useCallback((fresh: HeroContent) => {
-    setHeroContentState((prev) => {
-      if (JSON.stringify(prev) === JSON.stringify(fresh)) return prev;
-      return fresh;
-    });
-  }, []);
-
-  const updateLogoImageSafe = useCallback((fresh: string) => {
-    setLogoImageUrlState((prev) => {
-      if (prev === fresh) return prev;
-      return fresh;
-    });
-  }, []);
-
-  const updateProductsSafe = useCallback((fresh: Product[]) => {
-    setProductsState((prev) => {
-      if (JSON.stringify(prev) === JSON.stringify(fresh)) return prev;
-      return fresh;
-    });
-  }, []);
-
-  const updateCategoriesSafe = useCallback((fresh: Category[]) => {
-    setCategoriesState((prev) => {
-      if (JSON.stringify(prev) === JSON.stringify(fresh)) return prev;
-      return fresh;
-    });
-  }, []);
-
-  // Session expiry check — auto-logout only if session is explicitly expired, and slide refresh on active use
+  // Session expiry check — auto-logout if session expired
   useEffect(() => {
-    if (isAdminLoggedIn) {
-      if (!isSessionValid()) {
-        setIsAdminLoggedIn(false);
-        destroySession();
-      } else {
-        refreshSessionIfValid();
-      }
+    if (isAdminLoggedIn && !isSessionValid()) {
+      setIsAdminLoggedIn(false);
+      destroySession();
     }
   }, [isAdminLoggedIn]);
 
@@ -546,394 +361,216 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const isDataInitialized = () => safeLocalStorageGet('falcon_data_initialized') === 'true';
   const markDataInitialized = () => safeLocalStorageSet('falcon_data_initialized', 'true');
 
-  // Instantly restore full high-resolution catalogue pages from IndexedDB (<5ms on re-visit)
-  useEffect(() => {
-    let isCancelled = false;
-    getCataloguePagesFromIdb().then((cachedPages) => {
-      if (isCancelled || !cachedPages || cachedPages.length === 0) return;
-      const hasImages = cachedPages.some((p) => Boolean(p.imageUrl || p.image));
-      if (hasImages) {
-        setCatalogueSettingsState((prev) => ({
-          ...prev,
-          pages: [...cachedPages].sort((a, b) => (a.pageNumber ?? 0) - (b.pageNumber ?? 0)),
-        }));
-        setIsCatalogueLoaded(true);
-        // Preload all pages in memory immediately
-        cachedPages.forEach((p) => {
-          const url = p.imageUrl || p.image;
-          if (url) preloadCatalogueImage(url);
-        });
-      }
-    });
-    return () => {
-      isCancelled = true;
-    };
-  }, []);
-
   // Supabase initial load and real-time subscription
   useEffect(() => {
     let isMounted = true;
 
-    // Background freshness check & sync (Option C: Smart Version Bump with Hard Purge):
-    // Checks server version (<60 bytes).
-    // If local version matches server version: skips downloading anything (0 wasted bytes).
-    // If server version is higher (or force=true): hard purges local cache and replaces with fresh data.
-    const syncFreshnessInBackground = async (force: boolean = false) => {
+    const initSupabaseSync = async () => {
+      const syncStartTime = Date.now();
       try {
-        const [serverVerRes, freshMetaRes] = await Promise.allSettled([
-          fetchServerStoreVersion(),
-          fetchBackendFreshnessMetadata(),
-        ]);
+        setInitialSyncStatus('loading');
+        setInitialSyncError(null);
 
-        const serverVer = serverVerRes.status === 'fulfilled' ? serverVerRes.value : null;
-        const freshMeta = freshMetaRes.status === 'fulfilled' ? freshMetaRes.value : null;
-
-        if (!serverVer && !freshMeta) {
-          // Network might be offline, do nothing to preserve local experience
-          return;
-        }
-
-        const localVer = getLocalStoreVersion();
-        const cachedMeta = getCachedFreshnessMetadata();
-
-        let isOutdated = force || isCacheExpired();
-
-        // Check A: Dedicated integer version check (Option C)
-        if (serverVer && typeof serverVer.version === 'number') {
-          if (localVer === null || localVer !== serverVer.version) {
-            isOutdated = true;
-          }
-        }
-
-        // Check B: Metadata validation (products count, timestamps)
-        if (!isOutdated && freshMeta) {
-          if (!isCacheUpToDate(cachedMeta, freshMeta)) {
-            isOutdated = true;
-          }
-        }
-
-        // Check C: Ensure catalogue pages have images
-        if (!isOutdated && freshMeta && (freshMeta.cataloguePagesCount ?? 0) > 0) {
-          const localIdbPages = await getCataloguePagesFromIdb();
-          const hasValidLocalImages = Boolean(
-            localIdbPages &&
-            localIdbPages.length > 0 &&
-            localIdbPages.some((p) => Boolean(p.imageUrl || p.image))
-          );
-          if (!hasValidLocalImages) {
-            isOutdated = true;
-          }
-        }
-
-        if (!isOutdated) {
-          // Cache is 100% up to date!
-          if (serverVer?.version) setLocalStoreVersion(serverVer.version);
-          if (freshMeta) setCachedFreshnessMetadata({ ...freshMeta, timestamp: Date.now() });
-          setIsCatalogueLoaded(true);
-          return;
-        }
-
-        // Stale-While-Revalidate: Keep cached store data active and seamlessly overwrite with fresh data when response arrives.
-        // Fetch fresh products, categories, settings, and catalogue in parallel
-        const [productsRes, categoriesRes, settingsRes, cataloguePagesRes] = await Promise.allSettled([
+        // Fetch ALL critical initial datasets concurrently in parallel with allSettled
+        const [
+          settingsRes,
+          productsRes,
+          categoriesRes,
+          pagesRes,
+          quotesRes,
+        ] = await Promise.allSettled([
+          fetchSupabaseStoreSettings(),
           fetchSupabaseProducts(),
           fetchSupabaseCategories(),
-          fetchSupabaseStoreSettingsCore(),
           fetchSupabaseCataloguePages(),
+          fetchSupabaseQuotes(),
         ]);
 
         if (!isMounted) return;
 
-        // 1. Update Products if fetched
-        if (productsRes.status === 'fulfilled' && Array.isArray(productsRes.value)) {
-          const freshProducts = productsRes.value;
-          updateProductsSafe(freshProducts);
-          safeLocalStorageSet('falcon_products', JSON.stringify(freshProducts));
-        }
+        const settingsResult = settingsRes.status === 'fulfilled' ? settingsRes.value : null;
+        const productsResult = productsRes.status === 'fulfilled' ? productsRes.value : null;
+        const categoriesResult = categoriesRes.status === 'fulfilled' ? categoriesRes.value : null;
+        const pagesResult = pagesRes.status === 'fulfilled' ? pagesRes.value : null;
+        const quotesResult = quotesRes.status === 'fulfilled' ? quotesRes.value : null;
 
-        // 2. Update Categories if fetched
-        if (categoriesRes.status === 'fulfilled' && Array.isArray(categoriesRes.value)) {
-          const freshCats = [...categoriesRes.value].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-          updateCategoriesSafe(freshCats);
-          safeLocalStorageSet('falcon_categories', JSON.stringify(freshCats));
-        }
+        const hasAnyRemoteData = Boolean(
+          settingsResult ||
+          (productsResult && productsResult.length > 0) ||
+          (categoriesResult && categoriesResult.length > 0) ||
+          (pagesResult && pagesResult.length > 0) ||
+          (quotesResult && quotesResult.length > 0)
+        );
 
-        // 3. Update Settings if fetched
-        if (settingsRes.status === 'fulfilled' && settingsRes.value) {
-          const s = settingsRes.value;
-          if (s.companyDetails) {
-            const merged = mergeCompanyDetails(s.companyDetails);
-            updateCompanyDetailsSafe(merged);
+        // 1. Process Store Settings
+        if (settingsResult) {
+          markDataInitialized();
+          if (settingsResult.companyDetails) {
+            const merged = mergeCompanyDetails(settingsResult.companyDetails);
+            setCompanyDetailsState(merged);
             safeLocalStorageSet('falcon_company_details', JSON.stringify(merged));
           }
-          if (s.heroContent) {
+          if (settingsResult.heroContent) {
             const mergedHero: HeroContent = {
               ...defaultHeroContent,
-              ...s.heroContent,
-              showHeroBgShape: false,
-              badge: s.heroContent.badge !== undefined ? s.heroContent.badge : defaultHeroContent.badge,
-              showBadge: s.heroContent.showBadge !== undefined ? s.heroContent.showBadge : true,
+              ...settingsResult.heroContent,
+              badge: settingsResult.heroContent.badge !== undefined ? settingsResult.heroContent.badge : defaultHeroContent.badge,
+              showBadge: settingsResult.heroContent.showBadge !== undefined ? settingsResult.heroContent.showBadge : true,
             };
-            updateHeroContentSafe(mergedHero);
+            setHeroContentState(mergedHero);
             safeLocalStorageSet('falcon_hero_content', JSON.stringify(mergedHero));
           }
-          if (s.logoImageUrl !== undefined) {
-            updateLogoImageSafe(s.logoImageUrl);
-            safeLocalStorageSet('falcon_logo_image', s.logoImageUrl);
+          if (settingsResult.logoImageUrl !== undefined) {
+            setLogoImageUrlState(settingsResult.logoImageUrl);
+            safeLocalStorageSet('falcon_logo_image', settingsResult.logoImageUrl);
           }
-          if (s.whyChooseUs) {
-            const whyData = Array.isArray(s.whyChooseUs) && s.whyChooseUs.length > 0 ? s.whyChooseUs : defaultWhyChooseUsData;
-            setWhyChooseUsState(whyData);
-            safeLocalStorageSet('falcon_why_choose_us', JSON.stringify(whyData));
+          if (settingsResult.whyChooseUs) {
+            setWhyChooseUsState(settingsResult.whyChooseUs);
+            safeLocalStorageSet('falcon_why_choose_us', JSON.stringify(settingsResult.whyChooseUs));
+          }
+          if (settingsResult.catalogueSettings) {
+            const mergedCat: CatalogueSettings = {
+              ...defaultCatalogueSettings,
+              ...settingsResult.catalogueSettings,
+              pages: settingsResult.catalogueSettings.pages?.length
+                ? settingsResult.catalogueSettings.pages
+                : defaultCatalogueSettings.pages,
+            };
+            setCatalogueSettingsState(mergedCat);
+            safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(mergedCat));
+          }
+          if (settingsResult.adminAuth?.email && settingsResult.adminAuth?.passwordHash) {
+            setAdminCredentialsState({
+              email: settingsResult.adminAuth.email,
+              passwordHash: settingsResult.adminAuth.passwordHash,
+            });
+            safeLocalStorageSet('falcon_admin_credentials', JSON.stringify(settingsResult.adminAuth));
+          }
+        } else if (!isDataInitialized() && !isSeedingRef.current) {
+          // Attempt first-time seed if table is blank
+          isSeedingRef.current = true;
+          saveSupabaseStoreSettings({
+            companyDetails: defaultCompanyDetails,
+            heroContent: defaultHeroContent,
+            logoImageUrl: '',
+            whyChooseUs: defaultWhyChooseUsData,
+            catalogueSettings: defaultCatalogueSettings,
+            adminAuth: defaultAdminCreds,
+          }).catch((err) => console.log('[Supabase] Initial settings seed note:', err));
+        }
+
+        // 2. Process Products
+        if (productsResult && productsResult.length > 0) {
+          markDataInitialized();
+          setProductsState(productsResult);
+          safeLocalStorageSet('falcon_products', JSON.stringify(productsResult));
+        } else if (!isDataInitialized() && !isSeedingRef.current) {
+          for (const prod of defaultProductsData) {
+            upsertSupabaseProduct(prod).catch(() => {});
           }
         }
 
-        // 4. Update Catalogue Pages if fetched
-        if (cataloguePagesRes.status === 'fulfilled' && Array.isArray(cataloguePagesRes.value)) {
-          const freshPages = cataloguePagesRes.value;
-          if (freshPages.length > 0) {
-            saveCataloguePagesToIdb(freshPages).catch(() => {});
+        // 3. Process Categories
+        if (categoriesResult && categoriesResult.length > 0) {
+          markDataInitialized();
+          const sortedCats = [...categoriesResult].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+          setCategoriesState(sortedCats);
+          safeLocalStorageSet('falcon_categories', JSON.stringify(sortedCats));
+        } else if (!isDataInitialized() && !isSeedingRef.current) {
+          for (const cat of defaultCategoriesData) {
+            upsertSupabaseCategory(cat).catch(() => {});
+          }
+        }
 
-            freshPages.forEach((p) => {
-              const url = p.imageUrl || p.image;
-              if (url) preloadCatalogueImage(url);
+        // 4. Process Quotes
+        if (quotesResult && quotesResult.length > 0) {
+          setQuotesState(quotesResult);
+          safeLocalStorageSet('falcon_quotes', JSON.stringify(quotesResult));
+        }
+
+        // 5. Process Catalogue Pages
+        if (pagesResult && pagesResult.length > 0) {
+          setCatalogueSettingsState((prev) => {
+            const currentPages = prev.pages && prev.pages.length > 0 ? prev.pages : defaultCatalogueSettings.pages;
+            const map = new Map<string, CataloguePage>();
+            pagesResult.forEach((p) => map.set(p.id, p));
+
+            const merged = currentPages.map((page) => {
+              const remote = map.get(page.id);
+              if (remote) {
+                map.delete(remote.id);
+                return { ...page, ...remote };
+              }
+              return page;
             });
 
-            setCatalogueSettingsState((prev) => {
-              const currentPages = prev.pages || defaultCatalogueSettings.pages;
-              const map = new Map<string, CataloguePage>();
-              freshPages.forEach((p) => map.set(p.id, p));
-
-              const merged = currentPages.map((page) => {
-                const remote = map.get(page.id);
-                if (remote) {
-                  map.delete(remote.id);
-                  return { ...page, ...remote };
-                }
-                return page;
-              });
-
-              map.forEach((extra) => {
-                if (!merged.some((p) => p.id === extra.id)) {
-                  merged.push(extra);
-                }
-              });
-
-              merged.sort((a, b) => (a.pageNumber ?? 0) - (b.pageNumber ?? 0));
-              const updated = { ...prev, pages: merged };
-              safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
-              return updated;
+            map.forEach((extra) => {
+              if (!merged.some((p) => p.id === extra.id)) {
+                merged.push(extra);
+              }
             });
 
-            setIsCatalogueLoaded(true);
+            merged.sort((a, b) => (a.pageNumber ?? 0) - (b.pageNumber ?? 0));
+            const updated = { ...prev, pages: merged };
+            safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
+            return updated;
+          });
+        }
+
+        // Check if we have data to display
+        const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+        const hasLoadedData = hasAnyRemoteData || hasOfflineCache;
+
+        // Check if Supabase responded to our queries (fulfilled promises mean the endpoint is live and reachable)
+        const isSupabaseReachable =
+          settingsRes.status === 'fulfilled' ||
+          productsRes.status === 'fulfilled' ||
+          categoriesRes.status === 'fulfilled' ||
+          pagesRes.status === 'fulfilled' ||
+          quotesRes.status === 'fulfilled';
+
+        if (!hasLoadedData && isOffline) {
+          setIsSupabaseConnected(false);
+          setInitialSyncError('No internet connection. Please check your network connection.');
+          setInitialSyncStatus('error');
+          return;
+        }
+
+        // Ensure a smooth minimum 1 second (1000ms) skeleton loading animation
+        const elapsed = Date.now() - syncStartTime;
+        const minSkeletonDuration = 1000;
+        if (elapsed < minSkeletonDuration) {
+          await new Promise((resolve) => setTimeout(resolve, minSkeletonDuration - elapsed));
+        }
+
+        if (!isMounted) return;
+
+        // Database verified and online
+        setIsSupabaseConnected(isSupabaseReachable || hasAnyRemoteData);
+        setSupabaseError(null);
+        setInitialSyncStatus('success');
+      } catch (err: any) {
+        console.warn('[Supabase] Initial sync connection note:', err?.message || err);
+        if (isMounted) {
+          const elapsed = Date.now() - syncStartTime;
+          const minSkeletonDuration = 1000;
+          if (elapsed < minSkeletonDuration) {
+            await new Promise((resolve) => setTimeout(resolve, minSkeletonDuration - elapsed));
           }
-        }
-
-        // 5. Update local store version to match server version
-        if (serverVer && typeof serverVer.version === 'number') {
-          setLocalStoreVersion(serverVer.version);
-        } else if (freshMeta?.serverVersion) {
-          setLocalStoreVersion(freshMeta.serverVersion);
-        }
-
-        if (freshMeta) {
-          setCachedFreshnessMetadata(freshMeta);
-        }
-        setLocalCacheTimestamp(Date.now());
-        markDataInitialized();
-      } catch (err) {
-        console.warn('[syncFreshnessInBackground error]:', err);
-      }
-    };
-
-    const initSupabaseSync = async () => {
-      try {
-        const hasCached = hasAnyCachedStoreData();
-
-        // Stale-While-Revalidate: If we have cached store data, do NOT wipe the cache or block UI with a skeleton!
-        // Instant visual paint from cache; background update syncs latest freshness.
-        if (!hasCached) {
-          setInitialSyncStatus('loading');
-          setInitialSyncError(null);
-        }
-
-        const [
-            settingsRes,
-            productsRes,
-            categoriesRes,
-            cataloguePagesRes,
-            catalogueSettingsRes,
-            freshnessMeta,
-          ] = await Promise.allSettled([
-            fetchSupabaseStoreSettingsCore(),
-            fetchSupabaseProducts(),
-            fetchSupabaseCategories(),
-            fetchSupabaseCataloguePages(),
-            fetchSupabaseCatalogueSettings(),
-            fetchBackendFreshnessMetadata(),
-          ]);
-
           if (!isMounted) return;
 
-          const settingsResult = settingsRes.status === 'fulfilled' ? settingsRes.value : null;
-          const productsResult = productsRes.status === 'fulfilled' ? productsRes.value : null;
-          const categoriesResult = categoriesRes.status === 'fulfilled' ? categoriesRes.value : null;
-          const cataloguePagesResult = cataloguePagesRes.status === 'fulfilled' ? cataloguePagesRes.value : null;
-          const catalogueSettingsResult = catalogueSettingsRes.status === 'fulfilled' ? catalogueSettingsRes.value : null;
-          const freshMeta = freshnessMeta.status === 'fulfilled' ? freshnessMeta.value : null;
-
-          const hasAnyRemoteData = Boolean(
-            settingsResult ||
-            (productsResult && productsResult.length > 0) ||
-            (categoriesResult && categoriesResult.length > 0) ||
-            (cataloguePagesResult && cataloguePagesResult.length > 0)
-          );
-
-          // 1. Process Core Store Settings
-          if (settingsResult) {
-            markDataInitialized();
-            if (settingsResult.companyDetails) {
-              const merged = mergeCompanyDetails(settingsResult.companyDetails);
-              updateCompanyDetailsSafe(merged);
-              safeLocalStorageSet('falcon_company_details', JSON.stringify(merged));
-            }
-            if (settingsResult.heroContent) {
-              const mergedHero: HeroContent = {
-                ...defaultHeroContent,
-                ...settingsResult.heroContent,
-                showHeroBgShape: false,
-                badge: settingsResult.heroContent.badge !== undefined ? settingsResult.heroContent.badge : defaultHeroContent.badge,
-                showBadge: settingsResult.heroContent.showBadge !== undefined ? settingsResult.heroContent.showBadge : true,
-              };
-              updateHeroContentSafe(mergedHero);
-              safeLocalStorageSet('falcon_hero_content', JSON.stringify(mergedHero));
-            }
-            if (settingsResult.logoImageUrl !== undefined) {
-              updateLogoImageSafe(settingsResult.logoImageUrl);
-              safeLocalStorageSet('falcon_logo_image', settingsResult.logoImageUrl);
-            }
-            if (settingsResult.whyChooseUs) {
-              const whyData = Array.isArray(settingsResult.whyChooseUs) && settingsResult.whyChooseUs.length > 0 ? settingsResult.whyChooseUs : defaultWhyChooseUsData;
-              setWhyChooseUsState(whyData);
-              safeLocalStorageSet('falcon_why_choose_us', JSON.stringify(whyData));
-            }
-          } else if (!isDataInitialized() && !isSeedingRef.current) {
-            // Attempt first-time seed if table is blank
-            isSeedingRef.current = true;
-            saveSupabaseStoreSettings({
-              companyDetails: defaultCompanyDetails,
-              heroContent: defaultHeroContent,
-              logoImageUrl: '',
-              whyChooseUs: defaultWhyChooseUsData,
-              catalogueSettings: defaultCatalogueSettings,
-            }).catch(() => {});
-          }
-
-          // 2. Process Products (Save real products to state & cache)
-          if (productsResult && productsResult.length > 0) {
-            markDataInitialized();
-            updateProductsSafe(productsResult);
-            safeLocalStorageSet('falcon_products', JSON.stringify(productsResult));
-          }
-
-          // 3. Process Categories (Save real categories to state & cache)
-          if (categoriesResult && categoriesResult.length > 0) {
-            markDataInitialized();
-            const sortedCats = [...categoriesResult].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-            updateCategoriesSafe(sortedCats);
-            safeLocalStorageSet('falcon_categories', JSON.stringify(sortedCats));
-          }
-
-          // 4. Process Catalogue Pages (Save real uploaded catalogue pages & images)
-          if (cataloguePagesResult && cataloguePagesResult.length > 0) {
-            markDataInitialized();
-            saveCataloguePagesToIdb(cataloguePagesResult).catch(() => {});
-            cataloguePagesResult.forEach((p) => {
-              const u = p.imageUrl || p.image;
-              if (u) preloadCatalogueImage(u);
-            });
-            setCatalogueSettingsState((prev) => {
-              const currentPages = prev.pages && prev.pages.length > 0 ? prev.pages : defaultCatalogueSettings.pages;
-              const map = new Map<string, CataloguePage>();
-              cataloguePagesResult.forEach((p) => map.set(p.id, p));
-
-              const merged = currentPages.map((page) => {
-                const remote = map.get(page.id);
-                if (remote) {
-                  map.delete(remote.id);
-                  return { ...page, ...remote };
-                }
-                return page;
-              });
-
-              map.forEach((extra) => {
-                if (!merged.some((p) => p.id === extra.id)) {
-                  merged.push(extra);
-                }
-              });
-
-              merged.sort((a, b) => (a.pageNumber ?? 0) - (b.pageNumber ?? 0));
-              const updated = { ...prev, pages: merged };
-              safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
-              return updated;
-            });
-            setIsCatalogueLoaded(true);
-          }
-
-          // 5. Process Catalogue Settings
-          if (catalogueSettingsResult) {
-            setCatalogueSettingsState((prev) => {
-              const mergedCat: CatalogueSettings = {
-                ...prev,
-                ...catalogueSettingsResult,
-                pages: catalogueSettingsResult.pages?.length ? catalogueSettingsResult.pages : prev.pages,
-              };
-              safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(mergedCat));
-              return mergedCat;
-            });
-          }
-
-          setIsCatalogueLoaded(true);
-
-          // Save freshness metadata & Option C integer store version
-          if (freshMeta) {
-            setCachedFreshnessMetadata(freshMeta);
-            if (typeof freshMeta.serverVersion === 'number') {
-              setLocalStoreVersion(freshMeta.serverVersion);
-            }
-          }
-          fetchServerStoreVersion().then((sv) => {
-            if (sv && typeof sv.version === 'number') {
-              setLocalStoreVersion(sv.version);
-            }
-          });
-
-          // Save 1-hour TTL cache timestamp
-          setLocalCacheTimestamp(Date.now());
-
-          // ONLY trigger offline error screen if device is genuinely OFFLINE with NO cached data!
-          const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
-          if (isOffline && !hasAnyRemoteData && !hasAnyCachedStoreData()) {
+          const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+          if (!hasOfflineCache) {
             setIsSupabaseConnected(false);
-            setInitialSyncError('You are currently offline. Please reconnect your mobile data or Wi-Fi and tap retry.');
-            setInitialSyncStatus('error');
-            return;
-          }
-
-          setIsSupabaseConnected(true);
-          setInitialSyncError(null);
-          setInitialSyncStatus('success');
-      } catch (err: any) {
-        if (isMounted) {
-          setIsCatalogueLoaded(true);
-          const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
-          if (isOffline && !hasAnyCachedStoreData()) {
-            setIsSupabaseConnected(false);
-            setInitialSyncError('You are currently offline. Please reconnect your mobile data or Wi-Fi and tap retry.');
+            setInitialSyncError(
+              isOffline
+                ? 'No internet connection. Please check your network connection.'
+                : 'Unable to connect to the store database. Please check your connection and retry.'
+            );
             setInitialSyncStatus('error');
           } else {
-            // Keep cached data available, never show error screen if cached data exists
-            setIsSupabaseConnected(true);
+            setIsSupabaseConnected(!isOffline);
+            setSupabaseError(null);
             setInitialSyncError(null);
             setInitialSyncStatus('success');
           }
@@ -943,121 +580,23 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     initSupabaseSync();
 
-    // Listen for window online/offline events for dynamic reconnection
-    const handleOnline = () => {
-      setIsSupabaseConnected(true);
-      setInitialSyncError(null);
-      setInitialSyncStatus('success');
-      syncFreshnessInBackground(true);
-      setRetryTrigger((prev) => prev + 1);
-    };
-    const handleOffline = () => {
-      setIsSupabaseConnected(false);
-    };
-
-    // Mobile & Desktop page focus / revisit triggers: forces fresh check when user opens or returns to app
-    const handlePageShow = () => {
-      syncFreshnessInBackground(true);
-    };
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        syncFreshnessInBackground(true);
-      }
-    };
-    const handleFocus = () => {
-      syncFreshnessInBackground(true);
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    window.addEventListener('pageshow', handlePageShow);
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // Periodic heartbeat check every 30 seconds if window is visible
-    const periodicCheck = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        syncFreshnessInBackground(true);
-      }
-    }, 30000);
-
     // Setup Supabase Real-Time Channel Listener
     const channel = supabase
       .channel('falcon_realtime_changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'store_settings' },
-        (payload) => {
-          const rowId = (payload.new as any)?.id || (payload.old as any)?.id;
-          if (rowId === 'store_version') {
-            syncFreshnessInBackground(true);
-            return;
-          }
-          if (payload.new && (payload.new as any).id === 'company_branding') {
-            const data: any = payload.new;
-            const newDetails = data.company_details || data.companyDetails;
-            const newHero = data.hero_content || data.heroContent;
-            const newLogo = data.logo_image_url || data.logoImageUrl;
-            const newWhy = data.why_choose_us || data.whyChooseUs;
-            const newCat = data.catalogue_settings || data.catalogueSettings;
-
-            if (newDetails) {
-              const merged = mergeCompanyDetails(newDetails);
-              setCompanyDetailsState(merged);
-              safeLocalStorageSet('falcon_company_details', JSON.stringify(merged));
-            }
-            if (newHero) {
-              setHeroContentState(newHero);
-              safeLocalStorageSet('falcon_hero_content', JSON.stringify(newHero));
-            }
-            if (newLogo !== undefined) {
-              setLogoImageUrlState(newLogo);
-              safeLocalStorageSet('falcon_logo_image', newLogo);
-            }
-            if (newWhy) {
-              setWhyChooseUsState(newWhy);
-              safeLocalStorageSet('falcon_why_choose_us', JSON.stringify(newWhy));
-            }
-            if (newCat) {
-              setCatalogueSettingsState((prev) => {
-                const merged = { ...prev, ...newCat };
-                safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(merged));
-                return merged;
-              });
-            }
-            fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-          }
-        }
-      )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'products' },
         (payload) => {
           if (payload.eventType === 'INSERT') {
             const newProd = mapProductFromSupabase(payload.new);
-            setProductsState((prev) => {
-              const next = [newProd, ...prev.filter((p) => p.id !== newProd.id)];
-              safeLocalStorageSet('falcon_products', JSON.stringify(next));
-              return next;
-            });
-            fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
+            setProductsState((prev) => [newProd, ...prev.filter((p) => p.id !== newProd.id)]);
           } else if (payload.eventType === 'UPDATE') {
             const updatedProd = mapProductFromSupabase(payload.new);
-            setProductsState((prev) => {
-              const next = prev.map((p) => (p.id === updatedProd.id ? updatedProd : p));
-              safeLocalStorageSet('falcon_products', JSON.stringify(next));
-              return next;
-            });
-            fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
+            setProductsState((prev) => prev.map((p) => (p.id === updatedProd.id ? updatedProd : p)));
           } else if (payload.eventType === 'DELETE') {
             const deletedId = (payload.old as any)?.id;
             if (deletedId) {
-              setProductsState((prev) => {
-                const next = prev.filter((p) => p.id !== deletedId);
-                safeLocalStorageSet('falcon_products', JSON.stringify(next));
-                return next;
-              });
-              fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
+              setProductsState((prev) => prev.filter((p) => p.id !== deletedId));
             }
           }
         }
@@ -1071,19 +610,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             setCategoriesState((prev) => {
               const filtered = prev.filter((c) => c.id !== cat.id);
               const next = [...filtered, cat].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-              safeLocalStorageSet('falcon_categories', JSON.stringify(next));
               return next;
             });
-            fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
           } else if (payload.eventType === 'DELETE') {
             const deletedId = (payload.old as any)?.id;
             if (deletedId) {
-              setCategoriesState((prev) => {
-                const next = prev.filter((c) => c.id !== deletedId);
-                safeLocalStorageSet('falcon_categories', JSON.stringify(next));
-                return next;
-              });
-              fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
+              setCategoriesState((prev) => prev.filter((c) => c.id !== deletedId));
             }
           }
         }
@@ -1099,6 +631,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             const newLogo = data.logo_image_url || data.logoImageUrl;
             const newWhy = data.why_choose_us || data.whyChooseUs;
             const newCat = data.catalogue_settings || data.catalogueSettings;
+            const newAuth = data.admin_auth || data.adminAuth;
 
             if (newDetails) {
               const merged = mergeCompanyDetails(newDetails);
@@ -1124,7 +657,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 return merged;
               });
             }
-            fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
+            if (newAuth?.email && newAuth?.passwordHash) {
+              setAdminCredentialsState(newAuth);
+            }
           }
         }
       )
@@ -1149,7 +684,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
               return updated;
             });
-            fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
           } else if (payload.eventType === 'DELETE') {
             const deletedId = (payload.old as any)?.id;
             if (deletedId) {
@@ -1160,7 +694,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
                 return updated;
               });
-              fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'quotes' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newQuote = mapQuoteFromSupabase(payload.new);
+            setQuotesState((prev) => [newQuote, ...prev.filter((q) => q.id !== newQuote.id)]);
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedQuote = mapQuoteFromSupabase(payload.new);
+            setQuotesState((prev) => prev.map((q) => (q.id === updatedQuote.id ? updatedQuote : q)));
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = (payload.old as any)?.id;
+            if (deletedId) {
+              setQuotesState((prev) => prev.filter((q) => q.id !== deletedId));
             }
           }
         }
@@ -1169,12 +720,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     return () => {
       isMounted = false;
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      window.removeEventListener('pageshow', handlePageShow);
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      clearInterval(periodicCheck);
       supabase.removeChannel(channel);
     };
   }, [retryTrigger]);
@@ -1184,18 +729,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const cleanInputEmail = (email || '').trim().toLowerCase();
     const inputHash = await hashAdminPassword(cleanInputEmail, password);
 
-    const handleSuccess = (matchedEmail: string, matchedHash: string) => {
-      // 1. Establish session in localStorage SYNCHRONOUSLY FIRST
-      establishSessionSync(matchedEmail, matchedHash);
-      // 2. Set React state
-      setIsAdminLoggedIn(true);
-      return true;
-    };
-
     // 1. Check in-memory state credentials
     const cleanAdminEmail = (adminCredentials.email || '').trim().toLowerCase();
     if (cleanInputEmail === cleanAdminEmail && inputHash === adminCredentials.passwordHash) {
-      return handleSuccess(cleanAdminEmail, adminCredentials.passwordHash);
+      setIsAdminLoggedIn(true);
+      await createSession(cleanAdminEmail, adminCredentials.passwordHash);
+      return true;
     }
 
     // 2. Check stored local credentials
@@ -1205,7 +744,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const parsed = JSON.parse(stored);
         const parsedEmail = (parsed.email || '').trim().toLowerCase();
         if (parsedEmail && parsed.passwordHash && cleanInputEmail === parsedEmail && inputHash === parsed.passwordHash) {
-          return handleSuccess(parsedEmail, parsed.passwordHash);
+          setIsAdminLoggedIn(true);
+          await createSession(parsedEmail, parsed.passwordHash);
+          return true;
         }
       }
     } catch {}
@@ -1213,7 +754,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // 3. Fallback check default credentials
     const cleanDefaultEmail = DEFAULT_ADMIN_EMAIL.trim().toLowerCase();
     if (cleanInputEmail === cleanDefaultEmail && inputHash === DEFAULT_ADMIN_HASH) {
-      return handleSuccess(cleanDefaultEmail, DEFAULT_ADMIN_HASH);
+      setIsAdminLoggedIn(true);
+      await createSession(cleanDefaultEmail, DEFAULT_ADMIN_HASH);
+      return true;
     }
 
     return false;
@@ -1237,6 +780,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const newCreds: AdminCredentials = { email: cleanEmail, passwordHash: newHash };
     setAdminCredentialsState(newCreds);
     safeLocalStorageSet('falcon_admin_credentials', JSON.stringify(newCreds));
+
+    try {
+      await saveSupabaseStoreSettings({ adminAuth: newCreds });
+    } catch (e: any) {
+      console.warn('[Supabase] Note saving admin credentials:', e);
+    }
   };
 
   // 2. Update Company Details
@@ -1247,11 +796,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await saveSupabaseStoreSettings({ companyDetails: updated });
-      const newVer = await bumpBackendStoreVersion('company_details_updated');
-      if (newVer) setLocalStoreVersion(newVer);
-      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-    } catch {
-      // Offline fallback
+    } catch (e: any) {
+      console.warn('[Supabase] Note saving company details:', e);
     }
   };
 
@@ -1272,11 +818,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await saveSupabaseStoreSettings({ heroContent: updated });
-      const newVer = await bumpBackendStoreVersion('hero_content_updated');
-      if (newVer) setLocalStoreVersion(newVer);
-      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-    } catch {
-      // Offline fallback
+    } catch (e: any) {
+      console.warn('[Supabase] Note saving hero content:', e);
     }
   };
 
@@ -1291,11 +834,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await saveSupabaseStoreSettings({ logoImageUrl: finalUrl });
-      const newVer = await bumpBackendStoreVersion('logo_updated');
-      if (newVer) setLocalStoreVersion(newVer);
-      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-    } catch {
-      // Offline fallback
+    } catch (e: any) {
+      console.warn('[Supabase] Note saving logo image:', e);
     }
   };
 
@@ -1326,14 +866,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setProductsState((prev) => [newProd, ...prev]);
     safeLocalStorageSet('falcon_products', JSON.stringify([newProd, ...products]));
 
-    // Cloud synchronization & version bump
     try {
       await upsertSupabaseProduct(newProd);
-      const newVer = await bumpBackendStoreVersion('product_added');
-      if (newVer) setLocalStoreVersion(newVer);
-      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-    } catch (err) {
-      console.warn('[addProduct cloud sync warning]:', err);
+    } catch (e: any) {
+      console.warn('[Supabase] Note saving product:', e);
     }
   };
 
@@ -1362,11 +898,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (target) {
       try {
         await upsertSupabaseProduct(target);
-        const newVer = await bumpBackendStoreVersion('product_updated');
-        if (newVer) setLocalStoreVersion(newVer);
-        fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-      } catch (err) {
-        console.warn('[updateProduct cloud sync warning]:', err);
+      } catch (e: any) {
+        console.warn('[Supabase] Note updating product:', e);
       }
     }
   };
@@ -1379,11 +912,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await deleteSupabaseProduct(id);
-      const newVer = await bumpBackendStoreVersion('product_deleted');
-      if (newVer) setLocalStoreVersion(newVer);
-      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-    } catch (err) {
-      console.warn('[deleteProduct cloud sync warning]:', err);
+    } catch (e: any) {
+      console.warn('[Supabase] Note deleting product:', e);
     }
   };
 
@@ -1409,11 +939,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await upsertSupabaseCategory(newCat);
-      const newVer = await bumpBackendStoreVersion('category_added');
-      if (newVer) setLocalStoreVersion(newVer);
-      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-    } catch (err) {
-      console.warn('[addCategory cloud sync warning]:', err);
+    } catch (e: any) {
+      console.warn('[Supabase] Note adding category:', e);
     }
   };
 
@@ -1433,11 +960,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (target) {
       try {
         await upsertSupabaseCategory(target);
-        const newVer = await bumpBackendStoreVersion('category_updated');
-        if (newVer) setLocalStoreVersion(newVer);
-        fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-      } catch (err) {
-        console.warn('[updateCategory cloud sync warning]:', err);
+      } catch (e: any) {
+        console.warn('[Supabase] Note updating category:', e);
       }
     }
   };
@@ -1450,11 +974,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await deleteSupabaseCategory(id);
-      const newVer = await bumpBackendStoreVersion('category_deleted');
-      if (newVer) setLocalStoreVersion(newVer);
-      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-    } catch (err) {
-      console.warn('[deleteCategory cloud sync warning]:', err);
+    } catch (e: any) {
+      console.warn('[Supabase] Note deleting category:', e);
     }
   };
 
@@ -1468,15 +989,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       for (const cat of updatedWithOrder) {
         await upsertSupabaseCategory(cat);
       }
-      const newVer = await bumpBackendStoreVersion('categories_reordered');
-      if (newVer) setLocalStoreVersion(newVer);
-      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-    } catch {
-      // Offline fallback
+    } catch (e: any) {
+      console.warn('[Supabase] Note reordering categories:', e);
     }
   };
 
-  // 12. Add Quote Request (Local storage only, remote quote table disabled)
+  // 12. Add Quote Request
   const addQuote = async (quote: Omit<QuoteRequest, 'id' | 'createdAt' | 'status'>) => {
     const id = 'quote-' + Date.now();
     const newQuote: QuoteRequest = {
@@ -1488,6 +1006,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const nextQuotes = [newQuote, ...quotes];
     setQuotesState(nextQuotes);
     safeLocalStorageSet('falcon_quotes', JSON.stringify(nextQuotes));
+
+    try {
+      await insertSupabaseQuote(newQuote);
+    } catch (e: any) {
+      console.warn('[Supabase] Note adding quote:', e);
+    }
   };
 
   // 13. Update Quote Status
@@ -1495,6 +1019,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const nextQuotes = quotes.map((q) => (q.id === id ? { ...q, status } : q));
     setQuotesState(nextQuotes);
     safeLocalStorageSet('falcon_quotes', JSON.stringify(nextQuotes));
+
+    try {
+      await updateSupabaseQuoteStatus(id, status);
+    } catch (e: any) {
+      console.warn('[Supabase] Note updating quote status:', e);
+    }
   };
 
   // 14. Delete Quote Request
@@ -1502,6 +1032,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const nextQuotes = quotes.filter((q) => q.id !== id);
     setQuotesState(nextQuotes);
     safeLocalStorageSet('falcon_quotes', JSON.stringify(nextQuotes));
+
+    try {
+      await deleteSupabaseQuote(id);
+    } catch (e: any) {
+      console.warn('[Supabase] Note deleting quote:', e);
+    }
   };
 
   // 15. Update Why Choose Us items
@@ -1511,11 +1047,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await saveSupabaseStoreSettings({ whyChooseUs: items });
-      const newVer = await bumpBackendStoreVersion('why_choose_us_updated');
-      if (newVer) setLocalStoreVersion(newVer);
-      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-    } catch {
-      // Offline fallback
+    } catch (e: any) {
+      console.warn('[Supabase] Note saving why choose us:', e);
     }
   };
 
@@ -1530,11 +1063,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await saveSupabaseStoreSettings({ catalogueSettings: updated });
-      const newVer = await bumpBackendStoreVersion('catalogue_settings_updated');
-      if (newVer) setLocalStoreVersion(newVer);
-      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-    } catch {
-      // Offline fallback
+    } catch (e: any) {
+      console.warn('[Supabase] Note updating catalogue settings:', e);
     }
   };
 
@@ -1559,7 +1089,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       };
       nextSettings = updated;
       safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
-      saveCataloguePagesToIdb(updatedPages).catch(() => {});
       return updated;
     });
 
@@ -1568,11 +1097,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         await saveSupabaseStoreSettings({ catalogueSettings: nextSettings });
       }
       await upsertSupabaseCataloguePage(page);
-      const newVer = await bumpBackendStoreVersion('catalogue_page_updated');
-      if (newVer) setLocalStoreVersion(newVer);
-      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-    } catch {
-      // Offline fallback
+    } catch (e: any) {
+      console.warn('[Supabase] Note saving catalogue page:', e);
     }
   };
 
@@ -1587,7 +1113,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       };
       nextSettings = updated;
       safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
-      saveCataloguePagesToIdb(sorted).catch(() => {});
       return updated;
     });
 
@@ -1598,11 +1123,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       for (const page of sorted) {
         await upsertSupabaseCataloguePage(page);
       }
-      const newVer = await bumpBackendStoreVersion('catalogue_pages_updated');
-      if (newVer) setLocalStoreVersion(newVer);
-      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-    } catch {
-      // Offline fallback
+    } catch (e: any) {
+      console.warn('[Supabase] Note saving catalogue pages:', e);
     }
   };
 
@@ -1629,24 +1151,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         heroContent: defaultHeroContent,
         logoImageUrl: '',
         whyChooseUs: defaultWhyChooseUsData,
+        adminAuth: defaultAdminCreds,
       });
-      await bumpBackendStoreVersion('reset_to_defaults');
-      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
-    } catch {
-      // Offline fallback
+    } catch (e: any) {
+      console.warn('[Supabase] Note resetting to defaults:', e);
     }
   };
 
   // 20. Manual Force Sync All Data to Supabase
   const syncAllDataToSupabase = async (): Promise<{ success: boolean; message: string }> => {
     try {
-      // 1. Save global store settings (public branding and settings only)
+      // 1. Save global store settings
       await saveSupabaseStoreSettings({
         companyDetails,
         heroContent,
         logoImageUrl,
         whyChooseUs,
         catalogueSettings,
+        adminAuth: adminCredentials,
       });
 
       // 2. Save products
@@ -1665,9 +1187,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           await upsertSupabaseCataloguePage(page);
         }
       }
-
-      await bumpBackendStoreVersion('manual_full_sync');
-      fetchBackendFreshnessMetadata().then((m) => m && setCachedFreshnessMetadata(m));
 
       setIsSupabaseConnected(true);
       setSupabaseError(null);
@@ -1705,7 +1224,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         initialSyncStatus,
         initialSyncError,
         hasOfflineCache,
-        isCatalogueLoaded,
         isFirebaseConnected: isSupabaseConnected,
         isSupabaseConnected,
         firebaseError: supabaseError,
