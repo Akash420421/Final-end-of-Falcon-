@@ -4,6 +4,7 @@ import { Menu, Phone, ChevronDown } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa6';
 import { useFalconStore } from '../context/StoreContext';
 import { NavigationTab } from '../types';
+import { OptimizedImage } from './OptimizedImage';
 
 interface HeaderProps {
   onOpenPhoneModal: () => void;
@@ -130,10 +131,15 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Case 1: Custom Full Combined Header Brand Banner (Image containing custom logo + stylized colored name) */}
             {companyDetails.customHeaderBannerUrl ? (
               <div className="h-10 sm:h-12 lg:h-16 flex items-center shrink-0 max-w-[210px] xs:max-w-[250px] sm:max-w-[320px] lg:max-w-[420px] overflow-hidden">
-                <img
+                <OptimizedImage
                   src={companyDetails.customHeaderBannerUrl}
                   alt={companyDetails.brandName || 'Falcon Electrics'}
-                  className="h-full w-auto max-w-full object-contain object-left transition-transform group-hover:scale-105"
+                  width={420}
+                  height={64}
+                  priority={true}
+                  quality={90}
+                  objectFit="contain"
+                  className="h-full w-auto max-w-full object-left transition-transform group-hover:scale-105"
                 />
               </div>
             ) : (
@@ -141,10 +147,15 @@ export const Header: React.FC<HeaderProps> = ({
               <>
                 {logoImageUrl ? (
                   <div className="w-9 h-9 lg:w-16 lg:h-14 rounded-xl flex items-center justify-center shrink-0 overflow-hidden">
-                    <img
+                    <OptimizedImage
                       src={logoImageUrl}
                       alt={companyDetails.brandName}
-                      className="max-w-full max-h-full object-contain transition-transform group-hover:scale-105"
+                      width={64}
+                      height={56}
+                      priority={true}
+                      quality={90}
+                      objectFit="contain"
+                      className="max-w-full max-h-full transition-transform group-hover:scale-105"
                     />
                   </div>
                 ) : (
