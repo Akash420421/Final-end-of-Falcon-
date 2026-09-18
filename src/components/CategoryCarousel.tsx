@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { useFalconStore } from '../context/StoreContext';
 import { ProductVisual } from './ProductVisual';
+import { CategoryCarouselSkeleton } from './SkeletonLoaders';
 
 interface CategoryCarouselProps {
   selectedCategory: string | null;
@@ -67,6 +68,9 @@ export const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
       </div>
 
       {/* Horizontal Carousel on Mobile / Multi-column Grid on Desktop */}
+      {categories.length === 0 ? (
+        <CategoryCarouselSkeleton />
+      ) : (
       <div
         ref={scrollRef}
         onMouseEnter={() => setIsPaused(true)}
@@ -161,8 +165,10 @@ export const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
           );
         })}
       </div>
+      )}
 
       {/* Pagination Indicators (Mobile only) */}
+      {categories.length > 0 && (
       <div className="flex items-center justify-center gap-1.5 mt-2 lg:hidden">
         {categories.map((_, index) => (
           <button
@@ -180,6 +186,7 @@ export const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
           />
         ))}
       </div>
+      )}
     </section>
   );
 };

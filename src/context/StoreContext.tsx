@@ -237,7 +237,7 @@ const mergeCompanyDetails = (data?: Partial<CompanyDetails> | null): CompanyDeta
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [initialSyncStatus, setInitialSyncStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [initialSyncStatus, setInitialSyncStatus] = useState<'loading' | 'success' | 'error'>('success');
   const [initialSyncError, setInitialSyncError] = useState<string | null>(null);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(() => {
     return typeof navigator === 'undefined' ? true : navigator.onLine;
@@ -289,12 +289,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [products, setProductsState] = useState<Product[]>(() => {
     const saved = safeLocalStorageGet('falcon_products');
-    return saved ? JSON.parse(saved) : [];
+    return saved ? JSON.parse(saved) : defaultProductsData;
   });
 
   const [categories, setCategoriesState] = useState<Category[]>(() => {
     const saved = safeLocalStorageGet('falcon_categories');
-    return saved ? JSON.parse(saved) : [];
+    return saved ? JSON.parse(saved) : defaultCategoriesData;
   });
 
   const [whyChooseUs, setWhyChooseUsState] = useState<WhyChooseItem[]>(() => {
@@ -328,7 +328,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [retryTrigger, setRetryTrigger] = useState(0);
 
   const retrySupabaseConnection = () => {
-    setInitialSyncStatus('loading');
     setInitialSyncError(null);
     setSupabaseError(null);
     setRetryTrigger((prev) => prev + 1);
@@ -536,13 +535,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           return;
         }
 
-        // Ensure a smooth minimum 1 second (1000ms) skeleton loading animation
-        const elapsed = Date.now() - syncStartTime;
-        const minSkeletonDuration = 1000;
-        if (elapsed < minSkeletonDuration) {
-          await new Promise((resolve) => setTimeout(resolve, minSkeletonDuration - elapsed));
-        }
-
         if (!isMounted) return;
 
         // Database verified and online
@@ -552,28 +544,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       } catch (err: any) {
         console.warn('[Supabase] Initial sync connection note:', err?.message || err);
         if (isMounted) {
-          const elapsed = Date.now() - syncStartTime;
-          const minSkeletonDuration = 1000;
-          if (elapsed < minSkeletonDuration) {
-            await new Promise((resolve) => setTimeout(resolve, minSkeletonDuration - elapsed));
-          }
-          if (!isMounted) return;
-
           const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
-          if (!hasOfflineCache) {
+          if (isOffline) {
             setIsSupabaseConnected(false);
-            setInitialSyncError(
-              isOffline
-                ? 'No internet connection. Please check your network connection.'
-                : 'Unable to connect to the store database. Please check your connection and retry.'
-            );
-            setInitialSyncStatus('error');
-          } else {
-            setIsSupabaseConnected(!isOffline);
-            setSupabaseError(null);
-            setInitialSyncError(null);
-            setInitialSyncStatus('success');
+            setSupabaseError('Offline mode - using cached catalog data');
           }
+          setInitialSyncStatus('success');
         }
       }
     };
