@@ -34,35 +34,6 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
-    build: {
-      target: 'esnext',
-      cssCodeSplit: true,
-      sourcemap: false,
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            if (id.includes('node_modules')) {
-              if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-                return 'vendor-react';
-              }
-              if (id.includes('lucide-react') || id.includes('react-icons')) {
-                return 'vendor-icons';
-              }
-              if (id.includes('motion')) {
-                return 'vendor-motion';
-              }
-              if (id.includes('@supabase')) {
-                return 'vendor-supabase';
-              }
-              if (id.includes('leaflet')) {
-                return 'vendor-leaflet';
-              }
-              return 'vendor-core';
-            }
-          },
-        },
-      },
-    },
     server: {
       host: '0.0.0.0',
       port: 3000,

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   BrowserRouter as Router,
   Routes,
@@ -16,45 +16,26 @@ import { NavigationRow } from './components/NavigationRow';
 import { HeroSection } from './components/HeroSection';
 import { SearchBar } from './components/SearchBar';
 import { CategoryCarousel } from './components/CategoryCarousel';
+import { CategoryProductsView } from './components/CategoryProductsView';
 import { TrustBenefitsStrip } from './components/TrustBenefitsStrip';
 import { FeaturedProducts } from './components/FeaturedProducts';
 import { BulkDealerCTA } from './components/BulkDealerCTA';
 import { AboutFalcon } from './components/AboutFalcon';
+import { FactoryMapCard } from './components/FactoryMapCard';
+import { WhyChooseUs } from './components/WhyChooseUs';
+import { ContactSection } from './components/ContactSection';
 import { Footer } from './components/Footer';
+import { ProductDetailsModal } from './components/ProductDetailsModal';
+import { MobileMenuDrawer } from './components/MobileMenuDrawer';
+import { AdminLoginModal } from './components/AdminLoginModal';
+import { AdminPanelModal } from './components/AdminPanelModal';
+import { FullPageSkeletonLoader } from './components/SkeletonLoaders';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { CatalogueView } from './components/CatalogueView';
 import { SEOHead } from './components/SEOHead';
 import { initAutomatedHeartbeat } from './services/heartbeatService';
 import { shareProductOnWhatsApp, openWhatsAppChat } from './utils/whatsappHelper';
 import { Phone, X } from 'lucide-react';
-
-// Code-split heavy interactive and modal components for ultra-fast initial paint
-const FactoryMapCard = lazy(() =>
-  import('./components/FactoryMapCard').then((m) => ({ default: m.FactoryMapCard }))
-);
-const ContactSection = lazy(() =>
-  import('./components/ContactSection').then((m) => ({ default: m.ContactSection }))
-);
-const WhyChooseUs = lazy(() =>
-  import('./components/WhyChooseUs').then((m) => ({ default: m.WhyChooseUs }))
-);
-const CategoryProductsView = lazy(() =>
-  import('./components/CategoryProductsView').then((m) => ({ default: m.CategoryProductsView }))
-);
-const CatalogueView = lazy(() =>
-  import('./components/CatalogueView').then((m) => ({ default: m.CatalogueView }))
-);
-const ProductDetailsModal = lazy(() =>
-  import('./components/ProductDetailsModal').then((m) => ({ default: m.ProductDetailsModal }))
-);
-const MobileMenuDrawer = lazy(() =>
-  import('./components/MobileMenuDrawer').then((m) => ({ default: m.MobileMenuDrawer }))
-);
-const AdminLoginModal = lazy(() =>
-  import('./components/AdminLoginModal').then((m) => ({ default: m.AdminLoginModal }))
-);
-const AdminPanelModal = lazy(() =>
-  import('./components/AdminPanelModal').then((m) => ({ default: m.AdminPanelModal }))
-);
 
 function MainContent() {
   // Initialize silent 24h keep-alive heartbeat in the background
@@ -255,43 +236,56 @@ function MainContent() {
     setIsPhoneModalOpen(true);
   };
 
+  // Full Page Skeleton Loader while critical database data is fetching
+  if (initialSyncStatus === 'loading' || isLoading) {
+    return <FullPageSkeletonLoader />;
+  }
+
+  // Coordinated Error Screen with retry and cache fallback if initial sync failed
+  if (initialSyncStatus === 'error') {
+    return (
+      <FullPageSkeletonLoader
+        error={initialSyncError}
+        onRetry={retrySupabaseConnection}
+        onUseOfflineCache={proceedWithOfflineCache}
+        hasCachedData={hasOfflineCache}
+      />
+    );
+  }
+
   // Standalone Admin Panel Route — requires authentication
   if (isAdminPanelOpen) {
     if (!isAdminLoggedIn) {
       return (
         <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
           <SEOHead />
-          <Suspense fallback={<div className="text-white text-sm animate-pulse">Loading Admin Login...</div>}>
-            <AdminLoginModal
-              isOpen={true}
-              onClose={() => {
-                if (window.history.state && window.history.state.idx > 0) {
-                  navigate(-1);
-                } else {
-                  navigate('/', { replace: true });
-                }
-              }}
-              onSuccess={() => {
-                // Successfully logged in — state update will immediately render AdminPanelModal
-              }}
-            />
-          </Suspense>
+          <AdminLoginModal
+            isOpen={true}
+            onClose={() => {
+              if (window.history.state && window.history.state.idx > 0) {
+                navigate(-1);
+              } else {
+                navigate('/', { replace: true });
+              }
+            }}
+            onSuccess={() => {
+              // Successfully logged in — state update will immediately render AdminPanelModal
+            }}
+          />
         </div>
       );
     }
     return (
-      <Suspense fallback={<div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Loading Admin Panel...</div>}>
-        <AdminPanelModal
-          isOpen={isAdminPanelOpen}
-          onClose={() => {
-            if (window.history.state && window.history.state.idx > 0) {
-              navigate(-1);
-            } else {
-              navigate('/', { replace: true });
-            }
-          }}
-        />
-      </Suspense>
+      <AdminPanelModal
+        isOpen={isAdminPanelOpen}
+        onClose={() => {
+          if (window.history.state && window.history.state.idx > 0) {
+            navigate(-1);
+          } else {
+            navigate('/', { replace: true });
+          }
+        }}
+      />
     );
   }
 
@@ -432,50 +426,40 @@ function MainContent() {
 
             {/* Mobile-Only Factory Location Map Card (Directly below About Us on Mobile screens, hidden on Desktop) */}
             <section className="block lg:hidden py-4 px-4 max-w-md mx-auto">
-              <Suspense fallback={<div className="h-44 bg-slate-100 rounded-2xl animate-pulse" />}>
-                <FactoryMapCard />
-              </Suspense>
+              <FactoryMapCard />
             </section>
 
             {/* Why Choose Us (Hidden on mobile Home scroll; shown on desktop & when Why Us tab is clicked) */}
             <div className="hidden lg:block">
-              <Suspense fallback={<div className="h-64 bg-slate-50 rounded-2xl animate-pulse" />}>
-                <WhyChooseUs />
-              </Suspense>
+              <WhyChooseUs />
             </div>
 
             {/* Contact Section with integrated Google Map (Hidden on mobile Home scroll; shown on desktop & when Contact tab is clicked) */}
             <div className="hidden lg:block">
-              <Suspense fallback={<div className="h-72 bg-slate-50 rounded-2xl animate-pulse" />}>
-                <ContactSection
-                  onOpenPhoneModal={handleOpenPhone}
-                  onOpenWhatsApp={() => handleOpenWhatsApp()}
-                />
-              </Suspense>
+              <ContactSection
+                onOpenPhoneModal={handleOpenPhone}
+                onOpenWhatsApp={() => handleOpenWhatsApp()}
+              />
             </div>
           </>
         )}
 
         {activeTab === 'PRODUCTS' && (
-          <Suspense fallback={<div className="max-w-7xl mx-auto p-8 animate-pulse text-center text-slate-500 font-bold">Loading Catalog...</div>}>
-            <CategoryProductsView
-              products={filteredProducts}
-              selectedCategoryId={selectedCategoryId}
-              onSelectCategory={handleSelectCategory}
-              searchQuery={searchQuery}
-              onSearchChange={(q) => setSearchQuery(q)}
-              onSelectProduct={handleSelectProduct}
-              onOpenWhatsApp={(prod) => handleOpenWhatsApp(prod)}
-            />
-          </Suspense>
+          <CategoryProductsView
+            products={filteredProducts}
+            selectedCategoryId={selectedCategoryId}
+            onSelectCategory={handleSelectCategory}
+            searchQuery={searchQuery}
+            onSearchChange={(q) => setSearchQuery(q)}
+            onSelectProduct={handleSelectProduct}
+            onOpenWhatsApp={(prod) => handleOpenWhatsApp(prod)}
+          />
         )}
 
         {activeTab === 'CATALOGUE' && (
-          <Suspense fallback={<div className="min-h-[70vh] flex items-center justify-center text-slate-400 font-bold">Opening Interactive Catalogue...</div>}>
-            <CatalogueView
-              onOpenWhatsApp={(prod) => handleOpenWhatsApp(prod)}
-            />
-          </Suspense>
+          <CatalogueView
+            onOpenWhatsApp={(prod) => handleOpenWhatsApp(prod)}
+          />
         )}
 
         {activeTab === 'ABOUT' && (
@@ -488,9 +472,7 @@ function MainContent() {
 
         {activeTab === 'WHY_US' && (
           <div className="py-2">
-            <Suspense fallback={<div className="h-72 bg-slate-50 rounded-2xl animate-pulse" />}>
-              <WhyChooseUs />
-            </Suspense>
+            <WhyChooseUs />
             <TrustBenefitsStrip />
             <BulkDealerCTA />
           </div>
@@ -498,12 +480,10 @@ function MainContent() {
 
         {activeTab === 'CONTACT' && (
           <div className="py-2">
-            <Suspense fallback={<div className="h-72 bg-slate-50 rounded-2xl animate-pulse" />}>
-              <ContactSection
-                onOpenPhoneModal={handleOpenPhone}
-                onOpenWhatsApp={() => handleOpenWhatsApp()}
-              />
-            </Suspense>
+            <ContactSection
+              onOpenPhoneModal={handleOpenPhone}
+              onOpenWhatsApp={() => handleOpenWhatsApp()}
+            />
           </div>
         )}
       </main>
@@ -517,57 +497,45 @@ function MainContent() {
       )}
 
       {/* Product Details Drawer Sheet (Multi-page step-by-step history support) */}
-      {selectedProduct && (
-        <Suspense fallback={null}>
-          <ProductDetailsModal
-            product={selectedProduct}
-            onClose={handleCloseProductModal}
-            onOpenWhatsApp={(prod) => handleOpenWhatsApp(prod)}
-          />
-        </Suspense>
-      )}
+      <ProductDetailsModal
+        product={selectedProduct}
+        onClose={handleCloseProductModal}
+        onOpenWhatsApp={(prod) => handleOpenWhatsApp(prod)}
+      />
 
       {/* Mobile Side Menu Drawer */}
-      {isMenuOpen && (
-        <Suspense fallback={null}>
-          <MobileMenuDrawer
-            isOpen={isMenuOpen}
-            activeTab={activeTab}
-            onClose={() => setIsMenuOpen(false)}
-            onSelectTab={(tab) => {
-              handleSelectTab(tab);
-              setIsMenuOpen(false);
-            }}
-            onOpenWhatsApp={() => {
-              handleOpenWhatsApp();
-              setIsMenuOpen(false);
-            }}
-            onOpenAdminPanel={() => {
-              setIsMenuOpen(false);
-              if (location.pathname === '/admin') return;
-              if (isAdminLoggedIn) {
-                navigate('/admin');
-              } else {
-                setIsAdminLoginOpen(true);
-              }
-            }}
-          />
-        </Suspense>
-      )}
+      <MobileMenuDrawer
+        isOpen={isMenuOpen}
+        activeTab={activeTab}
+        onClose={() => setIsMenuOpen(false)}
+        onSelectTab={(tab) => {
+          handleSelectTab(tab);
+          setIsMenuOpen(false);
+        }}
+        onOpenWhatsApp={() => {
+          handleOpenWhatsApp();
+          setIsMenuOpen(false);
+        }}
+        onOpenAdminPanel={() => {
+          setIsMenuOpen(false);
+          if (location.pathname === '/admin') return;
+          if (isAdminLoggedIn) {
+            navigate('/admin');
+          } else {
+            setIsAdminLoginOpen(true);
+          }
+        }}
+      />
 
       {/* Admin Login Modal (Triggered by 10 clicks on logo) */}
-      {isAdminLoginOpen && (
-        <Suspense fallback={null}>
-          <AdminLoginModal
-            isOpen={isAdminLoginOpen}
-            onClose={() => setIsAdminLoginOpen(false)}
-            onSuccess={() => {
-              setIsAdminLoginOpen(false);
-              navigate('/admin');
-            }}
-          />
-        </Suspense>
-      )}
+      <AdminLoginModal
+        isOpen={isAdminLoginOpen}
+        onClose={() => setIsAdminLoginOpen(false)}
+        onSuccess={() => {
+          setIsAdminLoginOpen(false);
+          navigate('/admin');
+        }}
+      />
 
       {/* Direct Phone Call Dialog */}
       {isPhoneModalOpen && (
