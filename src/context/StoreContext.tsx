@@ -732,8 +732,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // 1. Check in-memory state credentials
     const cleanAdminEmail = (adminCredentials.email || '').trim().toLowerCase();
     if (cleanInputEmail === cleanAdminEmail && inputHash === adminCredentials.passwordHash) {
-      setIsAdminLoggedIn(true);
       await createSession(cleanAdminEmail, adminCredentials.passwordHash);
+      setIsAdminLoggedIn(true);
       return true;
     }
 
@@ -744,8 +744,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const parsed = JSON.parse(stored);
         const parsedEmail = (parsed.email || '').trim().toLowerCase();
         if (parsedEmail && parsed.passwordHash && cleanInputEmail === parsedEmail && inputHash === parsed.passwordHash) {
-          setIsAdminLoggedIn(true);
           await createSession(parsedEmail, parsed.passwordHash);
+          setIsAdminLoggedIn(true);
           return true;
         }
       }
@@ -754,8 +754,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // 3. Fallback check default credentials
     const cleanDefaultEmail = DEFAULT_ADMIN_EMAIL.trim().toLowerCase();
     if (cleanInputEmail === cleanDefaultEmail && inputHash === DEFAULT_ADMIN_HASH) {
-      setIsAdminLoggedIn(true);
       await createSession(cleanDefaultEmail, DEFAULT_ADMIN_HASH);
+      setIsAdminLoggedIn(true);
       return true;
     }
 
