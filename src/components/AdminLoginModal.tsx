@@ -6,6 +6,7 @@ import {
   recordFailedLoginAttempt,
   clearLoginRateLimit,
 } from '../utils/security';
+import { AdminLoadingScreen } from './admin/AdminLoadingScreen';
 
 interface AdminLoginModalProps {
   isOpen: boolean;
@@ -25,11 +26,16 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [showProgressLoader, setShowProgressLoader] = useState(false);
   const [lockoutSeconds, setLockoutSeconds] = useState(0);
 
   // Rate limiter check on open & ticker
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setShowProgressLoader(false);
+      setErrorMessage('');
+      return;
+    }
     const rateState = getLoginRateLimitState();
     if (rateState.isLocked) {
       setLockoutSeconds(rateState.remainingSeconds);
@@ -54,6 +60,21 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
   if (!isOpen) return null;
 
+  // If verified and loading screen active, render the sleek 0% -> 100% progress animation
+  if (showProgressLoader) {
+    return (
+      <AdminLoadingScreen
+        onComplete={() => {
+          setShowProgressLoader(false);
+          setEmail('');
+          setPassword('');
+          if (onSuccess) onSuccess();
+          if (onLoginSuccess) onLoginSuccess();
+        }}
+      />
+    );
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
@@ -72,11 +93,10 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       const success = await loginAdmin(email.trim(), password);
       if (success) {
         clearLoginRateLimit();
-        setEmail('');
-        setPassword('');
-        if (onSuccess) onSuccess();
-        if (onLoginSuccess) onLoginSuccess();
-        onClose();
+        // Trigger preloading of the lazy admin chunk immediately
+        import('./AdminPanelModal').catch(() => {});
+        // Switch to the 0-100% progress loader screen
+        setShowProgressLoader(true);
       } else {
         const afterFail = recordFailedLoginAttempt();
         if (afterFail.isLocked) {

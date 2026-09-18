@@ -402,3 +402,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     </div>
   );
 };
+
+export default AdminPanelModal;
+

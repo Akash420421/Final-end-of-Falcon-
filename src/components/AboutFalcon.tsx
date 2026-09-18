@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Factory, Quote, ChevronDown, ChevronUp } from 'lucide-react';
 import { useFalconStore } from '../context/StoreContext';
-import { OptimizedImage } from './OptimizedImage';
 
 interface AboutFalconProps {
   initialExpanded?: boolean;
@@ -105,14 +104,11 @@ export const AboutFalcon: React.FC<AboutFalconProps> = ({ initialExpanded = fals
               {companyDetails.visitingCardImageUrl && (
                 <div className="mt-4 lg:mt-5 bg-slate-50 p-2.5 sm:p-3 rounded-2xl border border-slate-200 shadow-sm relative group overflow-hidden">
                   <div className="relative rounded-xl overflow-hidden bg-white border border-slate-200/80 aspect-[16/9] flex items-center justify-center">
-                    <OptimizedImage
+                    <img
                       src={companyDetails.visitingCardImageUrl}
                       alt="Falcon Electrics Visiting Card"
-                      width={640}
-                      height={360}
-                      quality={85}
-                      objectFit="contain"
-                      className="w-full h-full object-center transition-transform duration-300 group-hover:scale-105"
+                      className="w-full h-full object-contain object-center transition-transform duration-300 group-hover:scale-105"
+                      loading="lazy"
                     />
                   </div>
                   <div className="mt-2 flex items-center justify-between px-1">

@@ -28,9 +28,15 @@ import { Footer } from './components/Footer';
 import { ProductDetailsModal } from './components/ProductDetailsModal';
 import { MobileMenuDrawer } from './components/MobileMenuDrawer';
 import { AdminLoginModal } from './components/AdminLoginModal';
-import { AdminPanelModal } from './components/AdminPanelModal';
+import { AdminLoadingScreen } from './components/admin/AdminLoadingScreen';
 import { FullPageSkeletonLoader } from './components/SkeletonLoaders';
 import { ErrorBoundary } from './components/ErrorBoundary';
+
+// Lazy-load the heavy Admin Panel chunk so normal visitors never download admin code
+const LazyAdminPanelModal = React.lazy(() =>
+  import('./components/AdminPanelModal').then((m) => ({ default: m.AdminPanelModal }))
+);
+
 import { CatalogueView } from './components/CatalogueView';
 import { SEOHead } from './components/SEOHead';
 import { initAutomatedHeartbeat } from './services/heartbeatService';
@@ -236,6 +242,23 @@ function MainContent() {
     setIsPhoneModalOpen(true);
   };
 
+  // Full Page Skeleton Loader while critical database data is fetching
+  if (initialSyncStatus === 'loading' || isLoading) {
+    return <FullPageSkeletonLoader />;
+  }
+
+  // Coordinated Error Screen with retry and cache fallback if initial sync failed
+  if (initialSyncStatus === 'error') {
+    return (
+      <FullPageSkeletonLoader
+        error={initialSyncError}
+        onRetry={retrySupabaseConnection}
+        onUseOfflineCache={proceedWithOfflineCache}
+        hasCachedData={hasOfflineCache}
+      />
+    );
+  }
+
   // Standalone Admin Panel Route — requires authentication
   if (isAdminPanelOpen) {
     if (!isAdminLoggedIn) {
@@ -259,16 +282,26 @@ function MainContent() {
       );
     }
     return (
-      <AdminPanelModal
-        isOpen={isAdminPanelOpen}
-        onClose={() => {
-          if (window.history.state && window.history.state.idx > 0) {
-            navigate(-1);
-          } else {
-            navigate('/', { replace: true });
-          }
-        }}
-      />
+      <React.Suspense
+        fallback={
+          <AdminLoadingScreen
+            isStandalone={true}
+            targetProgress={100}
+            statusMessage="Loading Falcon Admin Portal..."
+          />
+        }
+      >
+        <LazyAdminPanelModal
+          isOpen={isAdminPanelOpen}
+          onClose={() => {
+            if (window.history.state && window.history.state.idx > 0) {
+              navigate(-1);
+            } else {
+              navigate('/', { replace: true });
+            }
+          }}
+        />
+      </React.Suspense>
     );
   }
 
@@ -522,58 +555,32 @@ function MainContent() {
 
       {/* Direct Phone Call Dialog */}
       {isPhoneModalOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="phone-modal-title"
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setIsPhoneModalOpen(false)}
-        >
-          <div
-            className="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl relative animate-in fade-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-white rounded-2xl max-w-xs w-full p-5 text-center shadow-2xl relative">
             <button
               onClick={() => setIsPhoneModalOpen(false)}
-              aria-label="Close phone modal"
-              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition"
+              className="absolute top-3 right-3 text-slate-400 p-1"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
-            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner">
-              <Phone className="w-8 h-8" />
+
+            <div className="w-12 h-12 bg-red-100 rounded-full text-[#E0183D] flex items-center justify-center mx-auto mb-3">
+              <Phone className="w-6 h-6" />
             </div>
-            <h3 id="phone-modal-title" className="text-xl font-black text-slate-900 mb-1">
-              Direct Factory Desk
+
+            <h3 className="text-[16px] font-extrabold text-[#171827] mb-1">
+              Call {companyDetails?.brandName || 'Falcon Electrics'} Sales
             </h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Connect with {companyDetails?.companyName || 'Verma Enterprises'} sales & wholesale team
+            <p className="text-[12px] text-slate-600 mb-4">
+              Reach our sales team directly at:
             </p>
-            <div className="space-y-2 mb-4">
-              <a
-                href={`tel:${(companyDetails?.phone || '+91 97175 49515').replace(/\s+/g, '')}`}
-                className="w-full py-3.5 bg-red-600 text-white font-extrabold rounded-2xl flex items-center justify-center gap-2 hover:bg-red-700 shadow-md transition"
-              >
-                <Phone className="w-4 h-4" /> Call {companyDetails?.phone || '+91 97175 49515'}
-              </a>
-              {companyDetails?.secondaryPhone && (
-                <a
-                  href={`tel:${companyDetails.secondaryPhone.replace(/\s+/g, '')}`}
-                  className="w-full py-3 bg-slate-100 text-slate-700 font-bold rounded-2xl flex items-center justify-center gap-2 hover:bg-slate-200 transition text-sm"
-                >
-                  <Phone className="w-4 h-4" /> Alternate: {companyDetails.secondaryPhone}
-                </a>
-              )}
-            </div>
-            <button
-              onClick={() => {
-                setIsPhoneModalOpen(false);
-                handleOpenWhatsApp();
-              }}
-              className="text-xs font-bold text-emerald-600 hover:underline"
+            <a
+              href={`tel:${String(companyDetails?.phone || '+919717549515').replace(/[^0-9+]/g, '')}`}
+              className="block w-full bg-[#E0183D] text-white font-bold py-2.5 rounded-xl text-[14px] shadow-md mb-2"
             >
-              Prefer WhatsApp instead? Click here
-            </button>
+              {companyDetails?.phone || '+91 97175 49515'}
+            </a>
+            <span className="text-[10px] text-slate-400">Available Mon-Sat: {companyDetails?.businessHours || '10:00 AM - 7:00 PM'}</span>
           </div>
         </div>
       )}
@@ -583,14 +590,15 @@ function MainContent() {
 
 export default function App() {
   return (
-    <Router>
-      <ErrorBoundary>
-        <StoreProvider>
+    <ErrorBoundary>
+      <StoreProvider>
+        <Router>
           <Routes>
             <Route path="*" element={<MainContent />} />
           </Routes>
-        </StoreProvider>
-      </ErrorBoundary>
-    </Router>
+        </Router>
+      </StoreProvider>
+    </ErrorBoundary>
   );
 }
+
