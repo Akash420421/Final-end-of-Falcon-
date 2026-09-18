@@ -16,22 +16,30 @@ const HeroSectionComponent: React.FC<HeroSectionProps> = ({
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
-  // Collect array of hero images (supports multiple images uploaded from Admin Panel)
+  // Collect array of hero images (supports multiple images uploaded from Admin Panel, with fallback to permanent hero-switch.png)
+  const defaultPermanentHeroImage = '/hero-switch.png';
+
   const rawHeroImages =
     heroContent.switchImages && heroContent.switchImages.length > 0
       ? heroContent.switchImages
       : heroContent.switchImageUrl
       ? [heroContent.switchImageUrl]
-      : [];
+      : [defaultPermanentHeroImage];
 
-  const heroImages = rawHeroImages.filter(
-    (img) =>
-      img &&
-      img.trim() !== '' &&
-      img !== 'hero-fan-regulator' &&
-      img !== 'fan-regulator-5step' &&
-      img !== 'fan-regulator-white'
-  );
+  const heroImages = rawHeroImages
+    .map((img) => {
+      if (
+        !img ||
+        img.trim() === '' ||
+        img === 'hero-fan-regulator' ||
+        img === 'fan-regulator-5step' ||
+        img === 'fan-regulator-white'
+      ) {
+        return defaultPermanentHeroImage;
+      }
+      return img;
+    })
+    .filter(Boolean);
 
   // Auto-slide transition effect every 3 seconds
   useEffect(() => {

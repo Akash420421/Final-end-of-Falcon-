@@ -232,7 +232,7 @@ const defaultHeroContent: HeroContent = {
   showBadge: true,
   headline: 'High Performance Switchgear & Modular Accessories',
   subtitle: 'Heavy-duty 16A fan regulators, heater rotary switches & appliance controls.',
-  switchImageUrl: '',
+  switchImageUrl: '/hero-switch.png',
   showHeroBgShape: false,
   heroBgColor: 'red',
 };
