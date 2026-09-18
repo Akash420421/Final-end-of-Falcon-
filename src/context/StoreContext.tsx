@@ -536,9 +536,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           return;
         }
 
-        // Ensure a smooth minimum 1 second (1000ms) skeleton loading animation
+        // Ensure a smooth minimum skeleton loading animation (reduced to 100ms)
         const elapsed = Date.now() - syncStartTime;
-        const minSkeletonDuration = 1000;
+        const minSkeletonDuration = 100;
         if (elapsed < minSkeletonDuration) {
           await new Promise((resolve) => setTimeout(resolve, minSkeletonDuration - elapsed));
         }
@@ -550,10 +550,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setSupabaseError(null);
         setInitialSyncStatus('success');
       } catch (err: any) {
-        console.warn('[Supabase] Initial sync connection note:', err?.message || err);
+        console.debug('[Supabase] Initial sync connection note:', err?.message || err);
         if (isMounted) {
           const elapsed = Date.now() - syncStartTime;
-          const minSkeletonDuration = 1000;
+          const minSkeletonDuration = 100;
           if (elapsed < minSkeletonDuration) {
             await new Promise((resolve) => setTimeout(resolve, minSkeletonDuration - elapsed));
           }
@@ -784,7 +784,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       await saveSupabaseStoreSettings({ adminAuth: newCreds });
     } catch (e: any) {
-      console.warn('[Supabase] Note saving admin credentials:', e);
+      console.debug('[Supabase] Note saving admin credentials:', e);
     }
   };
 
@@ -797,7 +797,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       await saveSupabaseStoreSettings({ companyDetails: updated });
     } catch (e: any) {
-      console.warn('[Supabase] Note saving company details:', e);
+      console.debug('[Supabase] Note saving company details:', e);
     }
   };
 
@@ -819,7 +819,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       await saveSupabaseStoreSettings({ heroContent: updated });
     } catch (e: any) {
-      console.warn('[Supabase] Note saving hero content:', e);
+      console.debug('[Supabase] Note saving hero content:', e);
     }
   };
 
@@ -835,7 +835,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       await saveSupabaseStoreSettings({ logoImageUrl: finalUrl });
     } catch (e: any) {
-      console.warn('[Supabase] Note saving logo image:', e);
+      console.debug('[Supabase] Note saving logo image:', e);
     }
   };
 
@@ -869,7 +869,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       await upsertSupabaseProduct(newProd);
     } catch (e: any) {
-      console.warn('[Supabase] Note saving product:', e);
+      console.debug('[Supabase] Note saving product:', e);
     }
   };
 
@@ -899,7 +899,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       try {
         await upsertSupabaseProduct(target);
       } catch (e: any) {
-        console.warn('[Supabase] Note updating product:', e);
+        console.debug('[Supabase] Note updating product:', e);
       }
     }
   };
@@ -913,7 +913,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       await deleteSupabaseProduct(id);
     } catch (e: any) {
-      console.warn('[Supabase] Note deleting product:', e);
+      console.debug('[Supabase] Note deleting product:', e);
     }
   };
 
@@ -940,7 +940,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       await upsertSupabaseCategory(newCat);
     } catch (e: any) {
-      console.warn('[Supabase] Note adding category:', e);
+      console.debug('[Supabase] Note adding category:', e);
     }
   };
 
@@ -961,7 +961,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       try {
         await upsertSupabaseCategory(target);
       } catch (e: any) {
-        console.warn('[Supabase] Note updating category:', e);
+        console.debug('[Supabase] Note updating category:', e);
       }
     }
   };
@@ -975,7 +975,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       await deleteSupabaseCategory(id);
     } catch (e: any) {
-      console.warn('[Supabase] Note deleting category:', e);
+      console.debug('[Supabase] Note deleting category:', e);
     }
   };
 
@@ -990,7 +990,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         await upsertSupabaseCategory(cat);
       }
     } catch (e: any) {
-      console.warn('[Supabase] Note reordering categories:', e);
+      console.debug('[Supabase] Note reordering categories:', e);
     }
   };
 
@@ -1010,7 +1010,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       await insertSupabaseQuote(newQuote);
     } catch (e: any) {
-      console.warn('[Supabase] Note adding quote:', e);
+      console.debug('[Supabase] Note adding quote:', e);
     }
   };
 
@@ -1023,7 +1023,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       await updateSupabaseQuoteStatus(id, status);
     } catch (e: any) {
-      console.warn('[Supabase] Note updating quote status:', e);
+      console.debug('[Supabase] Note updating quote status:', e);
     }
   };
 
@@ -1036,7 +1036,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       await deleteSupabaseQuote(id);
     } catch (e: any) {
-      console.warn('[Supabase] Note deleting quote:', e);
+      console.debug('[Supabase] Note deleting quote:', e);
     }
   };
 
@@ -1048,7 +1048,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       await saveSupabaseStoreSettings({ whyChooseUs: items });
     } catch (e: any) {
-      console.warn('[Supabase] Note saving why choose us:', e);
+      console.debug('[Supabase] Note saving why choose us:', e);
     }
   };
 
@@ -1064,7 +1064,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       await saveSupabaseStoreSettings({ catalogueSettings: updated });
     } catch (e: any) {
-      console.warn('[Supabase] Note updating catalogue settings:', e);
+      console.debug('[Supabase] Note updating catalogue settings:', e);
     }
   };
 
@@ -1098,7 +1098,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
       await upsertSupabaseCataloguePage(page);
     } catch (e: any) {
-      console.warn('[Supabase] Note saving catalogue page:', e);
+      console.debug('[Supabase] Note saving catalogue page:', e);
     }
   };
 
@@ -1124,7 +1124,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         await upsertSupabaseCataloguePage(page);
       }
     } catch (e: any) {
-      console.warn('[Supabase] Note saving catalogue pages:', e);
+      console.debug('[Supabase] Note saving catalogue pages:', e);
     }
   };
 
@@ -1154,7 +1154,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         adminAuth: defaultAdminCreds,
       });
     } catch (e: any) {
-      console.warn('[Supabase] Note resetting to defaults:', e);
+      console.debug('[Supabase] Note resetting to defaults:', e);
     }
   };
 

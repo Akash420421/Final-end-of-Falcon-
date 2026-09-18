@@ -121,7 +121,7 @@ export async function sendHeartbeatPulse(manual = false): Promise<boolean> {
     });
 
     if (insertError) {
-      console.warn('[Heartbeat] Quotes insert notice, attempting store touch:', insertError.message);
+      console.debug('[Heartbeat] Quotes insert notice, attempting store touch:', insertError.message);
       await supabase.from('store_settings').select('id').limit(1);
     }
 
@@ -153,7 +153,7 @@ export async function sendHeartbeatPulse(manual = false): Promise<boolean> {
 
     return true;
   } catch (err: any) {
-    console.warn('[Heartbeat] Pulse connection note:', err?.message || err);
+    console.debug('[Heartbeat] Pulse connection note:', err?.message || err);
     currentStatus = {
       ...currentStatus,
       lastPulseStatus: 'error',

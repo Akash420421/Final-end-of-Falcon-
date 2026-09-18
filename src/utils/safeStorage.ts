@@ -66,7 +66,7 @@ export function safeLocalStorageSet(key: string, value: string): boolean {
     return true;
   } catch (err: any) {
     if (isQuotaExceededError(err)) {
-      console.warn(`[SafeStorage] LocalStorage quota exceeded for key '${key}'. Attempting lightweight cache optimization...`);
+      console.debug(`[SafeStorage] LocalStorage quota exceeded for key '${key}'. Attempting lightweight cache optimization...`);
 
       try {
         // Try parsing JSON and stripping heavy base64 images
@@ -84,13 +84,13 @@ export function safeLocalStorageSet(key: string, value: string): boolean {
           localStorage.setItem(key, value);
           return true;
         } catch {
-          console.warn(`[SafeStorage] Unable to persist key '${key}' to localStorage (Quota limit reached). React in-memory state & Supabase remain fully active.`);
+          console.debug(`[SafeStorage] Unable to persist key '${key}' to localStorage (Quota limit reached). React in-memory state & Supabase remain fully active.`);
           return false;
         }
       }
     }
 
-    console.warn(`[SafeStorage] localStorage write error for '${key}':`, err?.message || err);
+    console.debug(`[SafeStorage] localStorage write error for '${key}':`, err?.message || err);
     return false;
   }
 }
@@ -106,7 +106,7 @@ export function safeLocalStorageGet(key: string): string | null {
   try {
     return localStorage.getItem(key);
   } catch (err) {
-    console.warn(`[SafeStorage] localStorage read error for '${key}':`, err);
+    console.debug(`[SafeStorage] localStorage read error for '${key}':`, err);
     return null;
   }
 }
@@ -122,6 +122,6 @@ export function safeLocalStorageRemove(key: string): void {
   try {
     localStorage.removeItem(key);
   } catch (err) {
-    console.warn(`[SafeStorage] localStorage remove error for '${key}':`, err);
+    console.debug(`[SafeStorage] localStorage remove error for '${key}':`, err);
   }
 }

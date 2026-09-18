@@ -242,8 +242,10 @@ function MainContent() {
     setIsPhoneModalOpen(true);
   };
 
-  // Full Page Skeleton Loader removed for instant perceived performance.
-  // The app will render instantly with default/cached data and hydrate when Supabase is ready.
+  // Full Page Skeleton Loader while critical database data is fetching
+  if (initialSyncStatus === 'loading' || isLoading) {
+    return <FullPageSkeletonLoader />;
+  }
 
   // Coordinated Error Screen with retry and cache fallback if initial sync failed
   if (initialSyncStatus === 'error') {
