@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { FaWhatsapp } from 'react-icons/fa6';
+import { BookOpen, RefreshCw } from 'lucide-react';
 import { useFalconStore } from '../context/StoreContext';
 import { CataloguePage } from '../types';
 import { ProtectedCatalogueCanvas } from './ProtectedCatalogueCanvas';
@@ -11,9 +12,18 @@ interface CatalogueViewProps {
 export const CatalogueView: React.FC<CatalogueViewProps> = ({
   onOpenWhatsApp,
 }) => {
-  const { catalogueSettings, companyDetails } = useFalconStore();
+  const {
+    catalogueSettings,
+    companyDetails,
+    isCatalogueLoading,
+    loadCataloguePagesIfNeeded,
+  } = useFalconStore();
   const pages = catalogueSettings.pages || [];
   const [isBlackout, setIsBlackout] = useState(false);
+
+  useEffect(() => {
+    loadCataloguePagesIfNeeded();
+  }, [loadCataloguePagesIfNeeded]);
 
   // Anti-Screenshot, Anti-Print & Window Blur Protection Listener
   useEffect(() => {
@@ -156,6 +166,27 @@ export const CatalogueView: React.FC<CatalogueViewProps> = ({
       window.open(url, '_blank');
     }
   };
+
+  if (pages.length === 0 && isCatalogueLoading) {
+    return (
+      <div className="min-h-[75vh] bg-slate-950 flex flex-col items-center justify-center p-6 text-center space-y-5">
+        <div className="w-16 h-16 rounded-3xl bg-slate-900 border border-slate-800 text-[#E0183D] flex items-center justify-center shadow-xl">
+          <RefreshCw className="w-7 h-7 animate-spin text-[#E0183D]" />
+        </div>
+        <div className="space-y-1.5 max-w-sm">
+          <h3 className="text-lg font-bold text-white tracking-tight">
+            Loading Product Catalogue
+          </h3>
+          <p className="text-xs text-slate-400">
+            Fetching high-resolution catalogue pages and specifications in the background...
+          </p>
+        </div>
+        <div className="w-48 bg-slate-900 rounded-full h-1.5 overflow-hidden border border-slate-800">
+          <div className="bg-[#E0183D] h-full w-2/3 rounded-full animate-pulse" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

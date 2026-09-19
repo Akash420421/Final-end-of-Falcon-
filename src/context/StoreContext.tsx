@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Product, Category, QuoteRequest, CatalogueSettings, CataloguePage, CompanyDetails } from '../types';
 import { uploadOrCompressImage } from '../utils/supabaseStorage';
 import {
@@ -121,6 +121,8 @@ interface StoreContextType {
   whyChooseUs: WhyChooseItem[];
   quotes: QuoteRequest[];
   catalogueSettings: CatalogueSettings;
+  isCatalogueLoading: boolean;
+  loadCataloguePagesIfNeeded: () => Promise<void>;
   adminCredentials: AdminCredentials;
   isAdminLoggedIn: boolean;
   isLoading: boolean;
@@ -324,6 +326,49 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return defaultCatalogueSettings;
   });
 
+  const [isCatalogueLoading, setIsCatalogueLoading] = useState<boolean>(false);
+  const hasCatalogueLoadedRef = useRef<boolean>(false);
+
+  const loadCataloguePagesIfNeeded = useCallback(async () => {
+    if (hasCatalogueLoadedRef.current) return;
+    setIsCatalogueLoading(true);
+    try {
+      const pagesResult = await fetchSupabaseCataloguePages();
+      if (pagesResult && pagesResult.length > 0) {
+        setCatalogueSettingsState((prev) => {
+          const currentPages = prev.pages && prev.pages.length > 0 ? prev.pages : defaultCatalogueSettings.pages;
+          const map = new Map<string, CataloguePage>();
+          pagesResult.forEach((p) => map.set(p.id, p));
+
+          const merged = currentPages.map((page) => {
+            const remote = map.get(page.id);
+            if (remote) {
+              map.delete(remote.id);
+              return { ...page, ...remote };
+            }
+            return page;
+          });
+
+          map.forEach((extra) => {
+            if (!merged.some((p) => p.id === extra.id)) {
+              merged.push(extra);
+            }
+          });
+
+          merged.sort((a, b) => (a.pageNumber ?? 0) - (b.pageNumber ?? 0));
+          const updated = { ...prev, pages: merged };
+          safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
+          return updated;
+        });
+        hasCatalogueLoadedRef.current = true;
+      }
+    } catch (err: any) {
+      console.debug('[Supabase] Background catalogue sync note:', err?.message || err);
+    } finally {
+      setIsCatalogueLoading(false);
+    }
+  }, []);
+
   const isSeedingRef = useRef(false);
   const [retryTrigger, setRetryTrigger] = useState(0);
 
@@ -371,19 +416,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setInitialSyncStatus('loading');
         setInitialSyncError(null);
 
-        // Fetch ALL critical initial datasets concurrently in parallel with allSettled
+        // Fetch CRITICAL storefront datasets concurrently in parallel with allSettled
         const [
           settingsRes,
           productsRes,
           categoriesRes,
-          pagesRes,
-          quotesRes,
         ] = await Promise.allSettled([
           fetchSupabaseStoreSettings(),
           fetchSupabaseProducts(),
           fetchSupabaseCategories(),
-          fetchSupabaseCataloguePages(),
-          fetchSupabaseQuotes(),
         ]);
 
         if (!isMounted) return;
@@ -391,15 +432,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const settingsResult = settingsRes.status === 'fulfilled' ? settingsRes.value : null;
         const productsResult = productsRes.status === 'fulfilled' ? productsRes.value : null;
         const categoriesResult = categoriesRes.status === 'fulfilled' ? categoriesRes.value : null;
-        const pagesResult = pagesRes.status === 'fulfilled' ? pagesRes.value : null;
-        const quotesResult = quotesRes.status === 'fulfilled' ? quotesRes.value : null;
 
         const hasAnyRemoteData = Boolean(
           settingsResult ||
           (productsResult && productsResult.length > 0) ||
-          (categoriesResult && categoriesResult.length > 0) ||
-          (pagesResult && pagesResult.length > 0) ||
-          (quotesResult && quotesResult.length > 0)
+          (categoriesResult && categoriesResult.length > 0)
         );
 
         // 1. Process Store Settings
@@ -482,41 +519,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
         }
 
-        // 4. Process Quotes
-        if (quotesResult && quotesResult.length > 0) {
-          setQuotesState(quotesResult);
-          safeLocalStorageSet('falcon_quotes', JSON.stringify(quotesResult));
-        }
-
-        // 5. Process Catalogue Pages
-        if (pagesResult && pagesResult.length > 0) {
-          setCatalogueSettingsState((prev) => {
-            const currentPages = prev.pages && prev.pages.length > 0 ? prev.pages : defaultCatalogueSettings.pages;
-            const map = new Map<string, CataloguePage>();
-            pagesResult.forEach((p) => map.set(p.id, p));
-
-            const merged = currentPages.map((page) => {
-              const remote = map.get(page.id);
-              if (remote) {
-                map.delete(remote.id);
-                return { ...page, ...remote };
-              }
-              return page;
-            });
-
-            map.forEach((extra) => {
-              if (!merged.some((p) => p.id === extra.id)) {
-                merged.push(extra);
-              }
-            });
-
-            merged.sort((a, b) => (a.pageNumber ?? 0) - (b.pageNumber ?? 0));
-            const updated = { ...prev, pages: merged };
-            safeLocalStorageSet('falcon_catalogue_settings', JSON.stringify(updated));
-            return updated;
-          });
-        }
-
         // Check if we have data to display
         const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
         const hasLoadedData = hasAnyRemoteData || hasOfflineCache;
@@ -525,9 +527,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const isSupabaseReachable =
           settingsRes.status === 'fulfilled' ||
           productsRes.status === 'fulfilled' ||
-          categoriesRes.status === 'fulfilled' ||
-          pagesRes.status === 'fulfilled' ||
-          quotesRes.status === 'fulfilled';
+          categoriesRes.status === 'fulfilled';
 
         if (!hasLoadedData && isOffline) {
           setIsSupabaseConnected(false);
@@ -545,10 +545,21 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         if (!isMounted) return;
 
-        // Database verified and online
+        // Database verified and online - website displays immediately!
         setIsSupabaseConnected(isSupabaseReachable || hasAnyRemoteData);
         setSupabaseError(null);
         setInitialSyncStatus('success');
+
+        // Background / Lazy Fetch: Asynchronously load heavy Catalogue Pages and Quotes without delaying the website!
+        setTimeout(() => {
+          loadCataloguePagesIfNeeded();
+          fetchSupabaseQuotes().then((quotesResult) => {
+            if (quotesResult && quotesResult.length > 0) {
+              setQuotesState(quotesResult);
+              safeLocalStorageSet('falcon_quotes', JSON.stringify(quotesResult));
+            }
+          }).catch(() => {});
+        }, 120);
       } catch (err: any) {
         console.debug('[Supabase] Initial sync connection note:', err?.message || err);
         if (isMounted) {
@@ -1216,6 +1227,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         whyChooseUs,
         quotes,
         catalogueSettings,
+        isCatalogueLoading,
+        loadCataloguePagesIfNeeded,
         adminCredentials,
         isAdminLoggedIn,
         isLoading: initialSyncStatus === 'loading',

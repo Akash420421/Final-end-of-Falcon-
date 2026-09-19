@@ -1,5 +1,5 @@
-import React from 'react';
-import { AlertTriangle, RefreshCw, WifiOff, ServerOff } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { AlertTriangle, RefreshCw, WifiOff, ServerOff, Sparkles } from 'lucide-react';
 
 export const ProductCardSkeleton: React.FC = () => {
   return (
@@ -64,6 +64,26 @@ export const FullPageSkeletonLoader: React.FC<FullPageSkeletonLoaderProps> = ({
   onRetry,
 }) => {
   const isBrowserOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+  const [progress, setProgress] = useState(18);
+
+  useEffect(() => {
+    const timer1 = setTimeout(() => setProgress(42), 120);
+    const timer2 = setTimeout(() => setProgress(68), 320);
+    const timer3 = setTimeout(() => setProgress(86), 650);
+    const timer4 = setTimeout(() => setProgress(96), 1100);
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+      clearTimeout(timer4);
+    };
+  }, []);
+
+  const getStatusMessage = (val: number) => {
+    if (val < 85) return 'Loading...';
+    return 'Almost Ready...';
+  };
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-slate-800 flex flex-col w-full overflow-hidden relative">
@@ -89,6 +109,32 @@ export const FullPageSkeletonLoader: React.FC<FullPageSkeletonLoaderProps> = ({
         <div className="w-24 h-4 bg-slate-100 rounded-full animate-pulse"></div>
         <div className="w-20 h-4 bg-slate-100 rounded-full animate-pulse"></div>
       </div>
+
+      {/* 3. Live Percentage Progress Bar */}
+      {!error && (
+        <div className="bg-white/95 border-b border-slate-200/80 px-4 py-2.5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shrink-0 transition-all">
+          <div className="flex items-center gap-2.5">
+            <div className="w-5 h-5 rounded-full bg-red-50 text-[#E0183D] flex items-center justify-center shrink-0 border border-red-200/70">
+              <RefreshCw className="w-3 h-3 animate-spin text-[#E0183D]" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-800 tracking-tight">
+                {getStatusMessage(progress)}
+              </span>
+              <span className="text-[10px] font-black text-[#E0183D] bg-red-50 border border-red-200/70 px-1.5 py-0.5 rounded-full font-mono">
+                {Math.round(progress)}%
+              </span>
+            </div>
+          </div>
+
+          <div className="w-full sm:w-56 bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200/80 shrink-0">
+            <div
+              className="bg-gradient-to-r from-[#E0183D] via-red-500 to-rose-400 h-2 rounded-full transition-all duration-300 ease-out shadow-xs"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Error Overlay / Modal if initialization failed */}
       {error ? (
